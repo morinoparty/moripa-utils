@@ -26,6 +26,11 @@ import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketActor
+import party.morino.moripautils.common.model.ticket.TicketComment
+import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.common.model.ticket.TicketCommentResult
+import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketStatus
 import party.morino.moripautils.common.model.ticket.TicketSubmission
@@ -35,12 +40,13 @@ import java.util.UUID
 import java.util.logging.Logger
 
 /**
- * [TicketService] の分岐 (カテゴリー不明 / 本文が空 / 成功) を確認するテスト
+ * [TicketService] の分岐 (送信: カテゴリー不明 / 本文が空 / 成功、コメント: 権限なし / 本人 / 運営) を確認するテスト
  *
  * common のテストには mockk が無いため、リポジトリと通知先は記録するだけの手書きの偽物に差し替える。
  */
 class TicketServiceTest {
     private val repository = RecordingRepository()
+    private val commentRepository = RecordingCommentRepository()
     private val notifier = RecordingNotifier()
     // 通知は非同期に行われるため、完了を待てるように専用の Job を持つスコープを渡す
     private val notificationJob = Job()
@@ -55,6 +61,7 @@ class TicketServiceTest {
                 module {
                     single { config }
                     single<TicketRepository> { repository }
+                    single<TicketCommentRepository> { commentRepository }
                     single { notifier } bind TicketNotifier::class
                 },
             ),
@@ -103,13 +110,48 @@ class TicketServiceTest {
         assertEquals(listOf(success.ticket to "バグの報告"), notifier.notified.map { it.first to it.second.name })
     }
 
+    @Test
+    @DisplayName("Treats another player's ticket as not found when commenting")
+    fun rejectsCommentFromStranger() = runBlocking {
+        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", "bug", "hello"))
+        val stranger = TicketActor(UUID.randomUUID(), "Alex", isStaff = false)
+
+        val result = service.addComment(stranger, ticket.id, "me too")
+
+        assertEquals(TicketCommentResult.TicketNotFound, result)
+        assertTrue(commentRepository.created.isEmpty())
+    }
+
+    @Test
+    @DisplayName("Saves comments from the owner as PLAYER and from staff as STAFF")
+    fun savesCommentsWithAuthorType() = runBlocking {
+        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", "bug", "hello"))
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+
+        service.addComment(TicketActor(playerUuid, "Steve", isStaff = false), ticket.id, "  more info  ")
+        val result = service.addComment(staff, ticket.id, "we are checking")
+
+        assertInstanceOf(TicketCommentResult.Success::class.java, result)
+        notificationJob.children.toList().joinAll()
+        // 本文は前後の空白を取り除き、立場は本人 / 運営で判定される
+        assertEquals(
+            listOf(
+                TicketCommentSubmission(ticket.id, playerUuid, "Steve", TicketCommentAuthorType.PLAYER, "more info"),
+                TicketCommentSubmission(ticket.id, null, "discord-bot", TicketCommentAuthorType.STAFF, "we are checking"),
+            ),
+            commentRepository.created,
+        )
+        assertEquals(2, notifier.commented.size)
+    }
+
     /** create の呼び出しを記録し、連番の id を振って返すリポジトリ */
     private class RecordingRepository : TicketRepository {
         val created = mutableListOf<TicketSubmission>()
+        private val tickets = mutableListOf<Ticket>()
 
         override suspend fun create(submission: TicketSubmission): Ticket {
             created += submission
-            return Ticket(
+            val ticket = Ticket(
                 id = created.size.toLong(),
                 serverId = submission.serverId,
                 playerUuid = submission.playerUuid,
@@ -119,19 +161,48 @@ class TicketServiceTest {
                 status = TicketStatus.OPEN,
                 createdAt = Instant.EPOCH,
             )
+            tickets += ticket
+            return ticket
         }
 
-        override suspend fun findById(id: Long): Ticket? = null
+        override suspend fun findById(id: Long): Ticket? = tickets.firstOrNull { it.id == id }
 
         override suspend fun search(query: TicketSearchQuery): List<Ticket> = emptyList()
+    }
+
+    /** create の呼び出しを記録し、連番の id を振って返すコメントのリポジトリ */
+    private class RecordingCommentRepository : TicketCommentRepository {
+        val created = mutableListOf<TicketCommentSubmission>()
+
+        override suspend fun create(submission: TicketCommentSubmission): TicketComment {
+            created += submission
+            return TicketComment(
+                id = created.size.toLong(),
+                ticketId = submission.ticketId,
+                authorUuid = submission.authorUuid,
+                authorName = submission.authorName,
+                authorType = submission.authorType,
+                content = submission.content,
+                createdAt = Instant.EPOCH,
+            )
+        }
+
+        override suspend fun listByTicket(ticketId: Long, afterId: Long?, limit: Int): List<TicketComment> = emptyList()
+
+        override suspend fun listRecent(ticketId: Long, limit: Int): List<TicketComment> = emptyList()
     }
 
     /** 通知の呼び出しを記録するだけの通知先 */
     private class RecordingNotifier : TicketNotifier {
         val notified = mutableListOf<Pair<Ticket, TicketCategory>>()
+        val commented = mutableListOf<TicketComment>()
 
         override suspend fun notify(ticket: Ticket, category: TicketCategory) {
             notified += ticket to category
+        }
+
+        override suspend fun notifyComment(ticket: Ticket, comment: TicketComment) {
+            commented += comment
         }
     }
 }

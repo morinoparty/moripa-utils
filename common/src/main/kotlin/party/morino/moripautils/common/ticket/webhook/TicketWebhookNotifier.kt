@@ -11,11 +11,14 @@ package party.morino.moripautils.common.ticket.webhook
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.future.await
+import kotlinx.serialization.json.JsonObject
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.config.TicketConfig
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketComment
+import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.ticket.TicketNotifier
 import java.net.URI
 import java.net.http.HttpClient
@@ -26,9 +29,10 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 /**
- * 新しいチケットを Discord Webhook へ送る通知先
+ * 新しいチケットと、プレイヤーからのコメントを Discord Webhook へ送る通知先
  *
  * config.conf の ticket.webhook.url が空の場合は何もしない。
+ * 運営のコメントは運営自身が書いたものなので送らない。
  * 送信に失敗してもチケットの送信自体は成功させたいため、例外は呼び出し元へ投げずにログへ残す。
  *
  * @param logger 送信の失敗を記録するロガー
@@ -48,6 +52,24 @@ class TicketWebhookNotifier(
     }
 
     override suspend fun notify(ticket: Ticket, category: TicketCategory) {
+        send(DiscordWebhookPayload.create(ticket, category), "ticket #${ticket.id}")
+    }
+
+    override suspend fun notifyComment(ticket: Ticket, comment: TicketComment) {
+        // 運営の返信は運営チャンネルに流す必要がないため、プレイヤーからのコメントだけを送る
+        if (comment.authorType != TicketCommentAuthorType.PLAYER) {
+            return
+        }
+        send(DiscordWebhookPayload.createComment(ticket, comment), "comment #${comment.id} on ticket #${ticket.id}")
+    }
+
+    /**
+     * Webhook に本文を送る
+     *
+     * @param payload 送る JSON
+     * @param target ログに残す通知対象の説明
+     */
+    private suspend fun send(payload: JsonObject, target: String) {
         val url = config.webhook.url
         // URL 未設定は「Webhook を使わない」という意味なので正常系として扱う
         if (url.isBlank()) {
@@ -58,21 +80,21 @@ class TicketWebhookNotifier(
                 .newBuilder(URI.create(url))
                 .timeout(TIMEOUT)
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(DiscordWebhookPayload.create(ticket, category).toString()))
+                .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
                 .build()
             // sendAsync + await でスレッドをブロックせずに応答を待つ
             val response = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).await()
             if (response.statusCode() !in SUCCESS_STATUS) {
                 // 応答本文はエラー内容の手掛かりになるが、長すぎるとログが読みにくいので先頭だけ残す
                 val body = response.body().take(MAX_LOGGED_BODY_LENGTH)
-                logger.warning("Ticket webhook returned HTTP ${response.statusCode()} for ticket #${ticket.id}: $body")
+                logger.warning("Ticket webhook returned HTTP ${response.statusCode()} for $target: $body")
             }
         } catch (e: CancellationException) {
             // コルーチンのキャンセルは握りつぶさずに伝える
             throw e
         } catch (e: Exception) {
             // URL の書式誤り / 接続失敗 / タイムアウトなどはすべてログに残すだけにする
-            logger.log(Level.WARNING, "Failed to send ticket webhook for ticket #${ticket.id}", e)
+            logger.log(Level.WARNING, "Failed to send ticket webhook for $target", e)
         }
     }
 
