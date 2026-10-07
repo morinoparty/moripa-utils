@@ -18,12 +18,17 @@ import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketComment
+import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.ticket.TicketNotifier
 import party.morino.moripautils.paper.MoripaUtils
 import java.util.logging.Level
 
 /**
- * 新しいチケットを、通知権限 (moripautils.ticket.notify) を持つオンラインのプレイヤーへチャットで知らせる通知先
+ * チケットの動きをオンラインのプレイヤーへチャットで知らせる通知先
+ *
+ * - 新しいチケット / プレイヤーからのコメント: 通知権限 (moripautils.ticket.notify) を持つプレイヤーへ
+ * - 運営からのコメント: チケットを送信した本人へ (このサーバーにオンラインの場合のみ)
  */
 class InGameTicketNotifier :
     TicketNotifier,
@@ -55,5 +60,58 @@ class InGameTicketNotifier :
             // 通知の失敗でチケットの送信を失敗させない
             plugin.logger.log(Level.WARNING, "Failed to notify staff of ticket #${ticket.id}", e)
         }
+    }
+
+    override suspend fun notifyComment(ticket: Ticket, comment: TicketComment) {
+        try {
+            // オンラインプレイヤーの一覧や権限はメインスレッドで読む
+            withContext(plugin.minecraftDispatcher) {
+                when (comment.authorType) {
+                    TicketCommentAuthorType.PLAYER -> notifyStaffOfComment(ticket, comment)
+                    TicketCommentAuthorType.STAFF -> notifyOwnerOfReply(ticket)
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 通知の失敗でコメントの書き込みを失敗させない
+            plugin.logger.log(Level.WARNING, "Failed to notify comment #${comment.id} on ticket #${ticket.id}", e)
+        }
+    }
+
+    /**
+     * プレイヤーからのコメントを、通知権限を持つプレイヤーへ知らせる (メインスレッドで呼ぶこと)
+     *
+     * @param ticket コメント先のチケット
+     * @param comment 書き込まれたコメント
+     */
+    private fun notifyStaffOfComment(ticket: Ticket, comment: TicketComment) {
+        server.onlinePlayers
+            // 書き込んだ本人には知らせない
+            .filter { it.hasPermission(TicketPermissions.NOTIFY) && it.uniqueId != comment.authorUuid }
+            .forEach { staff ->
+                staff.sendRichMessage(
+                    "<gold>[Ticket]</gold> <player> さんがお問い合わせ #<id> にコメントしました " +
+                        "<click:run_command:'/ticket view ${ticket.id}'><aqua>[表示]</aqua></click>",
+                    Placeholder.unparsed("player", comment.authorName),
+                    Placeholder.unparsed("id", ticket.id.toString()),
+                )
+            }
+    }
+
+    /**
+     * 運営からの返信を、チケットを送信した本人へ知らせる (メインスレッドで呼ぶこと)
+     *
+     * 共有データベースを使っていても、通知できるのはこのサーバーにオンラインの場合だけ。
+     *
+     * @param ticket 返信されたチケット
+     */
+    private fun notifyOwnerOfReply(ticket: Ticket) {
+        val owner = server.getPlayer(ticket.playerUuid) ?: return
+        owner.sendRichMessage(
+            "<gold>[Ticket]</gold> お問い合わせ #<id> に運営から返信がありました " +
+                "<click:run_command:'/ticket view ${ticket.id}'><aqua>[表示]</aqua></click>",
+            Placeholder.unparsed("id", ticket.id.toString()),
+        )
     }
 }

@@ -26,6 +26,7 @@ import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketStatus
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.ticket.database.ExposedTicketRepository
+import party.morino.moripautils.common.ticket.database.TicketDatabaseSchema
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
@@ -43,7 +44,14 @@ class ExposedTicketRepositoryTest {
     fun setUp() {
         // サブディレクトリが無くても作成されることも合わせて確認する
         database = MoripaUtilsDatabase(DatabaseConfig(sqlite = SqliteConfig(file = "data/moripa-utils.db")), tempDir)
-        MoripaUtilsKoinContext.start(listOf(module { single { database } }))
+        MoripaUtilsKoinContext.start(
+            listOf(
+                module {
+                    single { database }
+                    single { TicketDatabaseSchema() }
+                },
+            ),
+        )
     }
 
     @AfterEach

@@ -9,14 +9,11 @@
 
 package party.morino.moripautils.common.ticket.database
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -36,19 +33,13 @@ import java.util.UUID
  * 共有データベース ([MoripaUtilsDatabase]) の tickets テーブルにチケットを保存するリポジトリ
  *
  * Exposed の DSL だけを使うため、SQLite / MySQL のどちらでも同じように動く。
- * tickets テーブルは最初の操作時に (無ければ) 作成する。
+ * テーブルは最初の操作時に [TicketDatabaseSchema] が (無ければ) 作成する。
  */
 class ExposedTicketRepository :
     TicketRepository,
     MoripaUtilsKoinComponent {
     private val database: MoripaUtilsDatabase by inject()
-
-    /** tickets テーブルを作成済みかどうか (複数スレッドから読まれるため volatile にする) */
-    @Volatile
-    private var schemaReady = false
-
-    /** 初回の操作が並行しても、テーブル作成を 1 回だけ行うためのロック */
-    private val schemaMutex = Mutex()
+    private val schema: TicketDatabaseSchema by inject()
 
     override suspend fun create(submission: TicketSubmission): Ticket = dbQuery {
         // DB によって timestamp の精度が異なるため、戻り値と DB の値がずれないようミリ秒に丸めておく
@@ -96,33 +87,15 @@ class ExposedTicketRepository :
     }
 
     /**
-     * tickets テーブルを用意してからトランザクションを実行する
+     * テーブルを用意してからトランザクションを実行する
      *
      * @param T 処理の戻り値の型
      * @param block トランザクション内で実行する処理
      * @return 処理の結果
      */
     private suspend fun <T> dbQuery(block: JdbcTransaction.() -> T): T {
-        ensureSchema()
+        schema.ensureCreated()
         return database.query(block)
-    }
-
-    /**
-     * tickets テーブルが無ければ作成する
-     *
-     * 本来の処理と同じトランザクションで作成すると、その処理が失敗したときに SQLite では作成ごとロールバックされ、
-     * フラグだけが残ってしまう。そのため別のトランザクションで作成し、コミットに成功してからフラグを立てる。
-     */
-    private suspend fun ensureSchema() {
-        // 作成済みならロックを取らずに抜ける
-        if (schemaReady) return
-        schemaMutex.withLock {
-            // ロック待ちの間に他のコルーチンが作成を終えている場合がある
-            if (!schemaReady) {
-                database.query { SchemaUtils.create(TicketsTable) }
-                schemaReady = true
-            }
-        }
     }
 
     /**

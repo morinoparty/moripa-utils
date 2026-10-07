@@ -1,11 +1,11 @@
 ---
 title: MineAuth 連携
-description: MineAuth を通じてチケットを参照する HTTP API
+description: MineAuth を通じてチケットの参照やコメントを行う HTTP API
 ---
 
 # MineAuth 連携
 
-[MineAuth](https://github.com/morinoparty/MineAuth) が導入されている場合、チケットを参照する HTTP API が MineAuth に登録されます。
+[MineAuth](https://github.com/morinoparty/MineAuth) が導入されている場合、チケットの参照やコメントを行う HTTP API が MineAuth に登録されます。
 MineAuth は任意の依存関係です。導入されていない場合でも、`/ticket` によるお問い合わせはそのまま利用できます。
 
 エンドポイントは `/api/v1/plugins/moripautils` 配下に登録されます。
@@ -19,7 +19,11 @@ MineAuth 同梱の PureTickets アドオンが使用する `tickets` 名前空�
 |---------|------|------------------|-----------|------|
 | `GET` | `/tickets` | ユーザー / サービス | `moripautils.ticket.staff` | すべてのチケットの一覧を取得します。 |
 | `GET` | `/tickets/{id}` | ユーザー / サービス | `moripautils.ticket.staff` | 指定した番号のチケットを取得します。 |
+| `GET` | `/tickets/{id}/comments` | ユーザー / サービス | `moripautils.ticket.staff` | 指定したチケットのコメントの一覧を取得します。 |
+| `POST` | `/tickets/{id}/comments` | ユーザー / サービス | `moripautils.ticket.staff` | 指定したチケットにコメントを書き込みます。 |
 | `GET` | `/me/tickets` | ユーザー | なし | 認証したプレイヤー自身のチケットの一覧を取得します。 |
+| `GET` | `/me/tickets/{id}/comments` | ユーザー | なし | 認証したプレイヤー自身のチケットのコメントの一覧を取得します。 |
+| `POST` | `/me/tickets/{id}/comments` | ユーザー | なし | 認証したプレイヤー自身のチケットにコメントを書き込みます。 |
 
 権限はユーザートークンに対してのみ確認されます。サービストークンは権限の確認の対象外です。
 
@@ -42,6 +46,47 @@ MineAuth 同梱の PureTickets アドオンが使用する `tickets` 名前空�
 
 認証したプレイヤー自身が送信したチケットを、チケット番号の昇順で取得します。
 `cursor` と `limit` は `GET /tickets` と同様に指定できます。
+
+### `GET /tickets/{id}/comments`
+
+指定したチケットのコメントを、書き込まれた順 (コメント番号の昇順) で取得します。
+`cursor` と `limit` は `GET /tickets` と同様に指定できます。チケットが存在しない場合は `404` になります。
+
+### `POST /tickets/{id}/comments`
+
+指定したチケットに、運営としてコメントを書き込みます。リクエスト本文には次の JSON を指定します。
+
+```json
+{
+    "content": "確認しました。修正までしばらくお待ちください。"
+}
+```
+
+ユーザートークンの場合はそのプレイヤーの名前で、サービストークンの場合はアカウント ID を名前として書き込まれます。
+ただし、ユーザートークンのプレイヤーが自分で送信したチケットに書き込んだ場合は、送信者本人 (`PLAYER`) のコメントとして扱われます。
+書き込みに成功すると、保存されたコメントが返されます。
+
+### `GET /me/tickets/{id}/comments`
+
+認証したプレイヤー自身のチケットのコメントを取得します。
+`cursor` と `limit` は `GET /tickets` と同様に指定できます。
+チケットが存在しない場合や、他のプレイヤーのチケットを指定した場合は `404` になります。
+
+### `POST /me/tickets/{id}/comments`
+
+認証したプレイヤー自身のチケットに、送信者本人としてコメントを書き込みます。
+リクエスト本文は `POST /tickets/{id}/comments` と同じです。
+チケットが存在しない場合や、他のプレイヤーのチケットを指定した場合は `404` になります。
+
+### コメントの書き込みに関するエラー
+
+| ステータス | `code` | 説明 |
+|-----------|--------|------|
+| `400` | `blank_content` | `content` が空、または空白のみです。 |
+| `400` | `content_too_long` | `content` が 1000 文字を超えています (前後の空白を除いた長さで判定します)。 |
+| `404` | `ticket_not_found` | チケットが存在しないか、書き込む権限がありません。 |
+
+状態が `CLOSED` のチケットにもコメントを書き込めます。
 
 ## レスポンス
 
@@ -83,3 +128,38 @@ MineAuth 同梱の PureTickets アドオンが使用する `tickets` 名前空�
 
 `hasMore` が `true` の場合は、`nextCursor` の値を `cursor` に指定して次のページを取得します。
 `hasMore` が `false` の場合、`nextCursor` は `null` になります。
+
+### コメント
+
+コメント 1 件は次の形式で返されます。
+
+```json
+{
+    "id": 3,
+    "ticketId": 12,
+    "authorUuid": null,
+    "authorName": "discord-bot",
+    "authorType": "STAFF",
+    "content": "確認しました。修正までしばらくお待ちください。",
+    "createdAt": "2026-10-02T13:00:00.000Z"
+}
+```
+
+| フィールド | 説明 |
+|-----------|------|
+| `id` | コメント番号です。すべてのチケットで共通の通し番号です。 |
+| `ticketId` | コメント先のチケット番号です。 |
+| `authorUuid` / `authorName` | 書き込んだプレイヤーの UUID と、書き込み時点の名前です。サービストークンからの書き込みでは `authorUuid` が `null` になり、`authorName` にはアカウント ID が入ります。 |
+| `authorType` | 書き込んだ人の立場です。送信者本人は `PLAYER`、運営は `STAFF` です。 |
+| `content` | コメントの内容です。 |
+| `createdAt` | 書き込み日時です (ISO-8601 形式、UTC)。 |
+
+コメントの一覧のエンドポイントは、`tickets` の代わりに `comments` 配列を返します。ページングの方法はチケットの一覧と同じです。
+
+```json
+{
+    "comments": [ { "id": 3, "...": "..." } ],
+    "nextCursor": null,
+    "hasMore": false
+}
+```

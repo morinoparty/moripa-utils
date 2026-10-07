@@ -15,10 +15,13 @@ import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.Module
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import party.morino.moripautils.common.ticket.TicketCommentRepository
 import party.morino.moripautils.common.ticket.TicketNotifier
 import party.morino.moripautils.common.ticket.TicketRepository
 import party.morino.moripautils.common.ticket.TicketService
+import party.morino.moripautils.common.ticket.database.ExposedTicketCommentRepository
 import party.morino.moripautils.common.ticket.database.ExposedTicketRepository
+import party.morino.moripautils.common.ticket.database.TicketDatabaseSchema
 import party.morino.moripautils.common.ticket.webhook.TicketWebhookNotifier
 import java.util.logging.Logger
 
@@ -38,7 +41,10 @@ object TicketModule {
      */
     fun create(logger: Logger): Module = module {
         // 共有データベースの tickets テーブルに保存する (接続先は config.conf の database で決まる)
+        // tickets / ticket_comments テーブルの作成は両リポジトリで共有する
+        single { TicketDatabaseSchema() }
         single<TicketRepository> { ExposedTicketRepository() }
+        single<TicketCommentRepository> { ExposedTicketCommentRepository() }
         // 通知先は TicketNotifier として bind し、TicketService が getAll でまとめて取り出す
         single { TicketWebhookNotifier(logger) } bind TicketNotifier::class
         // 通知は送信結果の返却と切り離して行う。SupervisorJob により 1 件の失敗が他の通知を巻き込まない

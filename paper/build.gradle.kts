@@ -109,9 +109,9 @@ sourceSets.main {
                     description = "Allows submitting tickets with /ticket"
                     default = Permission.Default.TRUE
                 }
-                // 新しいチケットの通知を受け取る権限
+                // 新しいチケットやプレイヤーからのコメントの通知を受け取る権限
                 register("moripautils.ticket.notify") {
-                    description = "Receives notifications of new tickets"
+                    description = "Receives notifications of new tickets and player comments"
                     default = Permission.Default.OP
                 }
                 // チケットの閲覧や対応を行うスタッフ向けの権限

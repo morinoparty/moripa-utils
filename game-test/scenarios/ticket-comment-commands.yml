@@ -1,0 +1,19 @@
+$schema: https://raw.githubusercontent.com/morinoparty/fukurou/v2/schema/scenario.v2.json
+name: /ticket view and /ticket comment report a missing ticket
+tags: [ticket, comment]
+steps:
+  # 参加直後はクライアントがまだ入力を受け付けず、打った文字がキー操作として扱われることがある
+  - { action: wait, seconds: 10 }
+  # fukurou では Dialog の送信ボタンを押せずチケットを作れないため、空のデータベースで存在しないチケットを指定する
+  # (コマンドの登録 / 引数の解析 / tickets・ticket_comments テーブルの作成と検索までを通す)
+  - { on: Alice, action: chat, text: "/ticket view 1" }
+  - { on: server, action: wait_for_log, pattern: "Alice issued server command: /ticket view 1", timeout: 10 }
+  - { on: Alice, action: wait_for_log, pattern: "\\[CHAT\\] お問い合わせが見つかりません。", timeout: 10 }
+  - { on: Alice, action: chat, text: "/ticket comment 1" }
+  - { on: server, action: wait_for_log, pattern: "Alice issued server command: /ticket comment 1", timeout: 10 }
+  - { action: wait, seconds: 3 }
+  # /ticket comment の結果メッセージは 1 回目と同じ文言で区別できないため、例外が無いことで確かめる
+  - { on: server, action: assert_no_log, pattern: "Exception executing command|Unhandled exception|at party\\.morino\\.moripautils\\." }
+  # コマンドが未登録 / プラグインの有効化に失敗 / 権限が無い、のいずれでもない (チャットの行に限定して誤検知を避ける)
+  - { on: Alice, action: assert_no_log, pattern: "\\[CHAT\\] .*(Unknown or incomplete command|現在お問い合わせを利用できません|permission)" }
+  - { on: Alice, action: screenshot, name: ticket-comment-not-found }

@@ -10,6 +10,7 @@
 package party.morino.moripautils.common.ticket.webhook
 
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -18,9 +19,10 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketComment
 
 /**
- * 新しいチケットを知らせる Discord Webhook の本文 (JSON) を組み立てる
+ * 新しいチケットやコメントを知らせる Discord Webhook の本文 (JSON) を組み立てる
  *
  * 外部状態に依存しない純粋関数だけを持つ。
  */
@@ -31,8 +33,11 @@ object DiscordWebhookPayload {
     /** Embed の field の値の最大文字数 (Discord の制限) */
     private const val MAX_FIELD_VALUE_LENGTH = 1024
 
-    /** Embed の色 (緑系) */
+    /** 新しいチケットの Embed の色 (緑系) */
     private const val EMBED_COLOR = 0x4CAF50
+
+    /** コメントの Embed の色 (青系、新しいチケットと見分けやすくする) */
+    private const val COMMENT_EMBED_COLOR = 0x2196F3
 
     /**
      * チケット 1 件分の Webhook 本文を組み立てる
@@ -42,10 +47,7 @@ object DiscordWebhookPayload {
      * @return Discord の Execute Webhook API に送る JSON
      */
     fun create(ticket: Ticket, category: TicketCategory): JsonObject = buildJsonObject {
-        // 本文に @everyone などが含まれていてもメンションが飛ばないようにする
-        putJsonObject("allowed_mentions") {
-            putJsonArray("parse") {}
-        }
+        putNoMentions()
         putJsonArray("embeds") {
             addJsonObject {
                 put("title", "新しいお問い合わせ #${ticket.id}")
@@ -59,6 +61,39 @@ object DiscordWebhookPayload {
                     add(field("ID", ticket.id.toString()))
                 }
             }
+        }
+    }
+
+    /**
+     * チケットへのコメント 1 件分の Webhook 本文を組み立てる
+     *
+     * @param ticket コメント先のチケット
+     * @param comment 通知するコメント
+     * @return Discord の Execute Webhook API に送る JSON
+     */
+    fun createComment(ticket: Ticket, comment: TicketComment): JsonObject = buildJsonObject {
+        putNoMentions()
+        putJsonArray("embeds") {
+            addJsonObject {
+                put("title", "お問い合わせ #${ticket.id} への新しいコメント")
+                put("description", comment.content.take(MAX_DESCRIPTION_LENGTH))
+                put("color", COMMENT_EMBED_COLOR)
+                put("timestamp", comment.createdAt.toString())
+                putJsonArray("fields") {
+                    add(field("書き込んだ人", "${comment.authorName} (${comment.authorType.name})"))
+                    add(field("サーバー", ticket.serverId))
+                    add(field("チケット ID", ticket.id.toString()))
+                }
+            }
+        }
+    }
+
+    /**
+     * 本文に @everyone などが含まれていてもメンションが飛ばないようにする設定を追加する
+     */
+    private fun JsonObjectBuilder.putNoMentions() {
+        putJsonObject("allowed_mentions") {
+            putJsonArray("parse") {}
         }
     }
 
