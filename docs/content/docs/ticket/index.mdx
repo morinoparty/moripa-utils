@@ -55,6 +55,10 @@ Web などからコメントを扱う場合は [MineAuth 連携](/docs/ticket/mi
 | `/ticket` | `moripautils.ticket.use` | お問い合わせ用の Dialog を開きます。プレイヤーのみ実行できます。 |
 | `/ticket view <番号>` | `moripautils.ticket.use` | チケットと最新 10 件のコメントをチャットに表示します。本人のチケットのみ表示でき、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケットを表示できます。 |
 | `/ticket comment <番号>` | `moripautils.ticket.use` | コメント入力用の Dialog を開きます。書き込める範囲は `/ticket view` と同じです。 |
+| `/ticket list [ページ]` | `moripautils.ticket.use` | 閲覧できるチケットを新しい順に 1 ページ 10 件ずつ表示します。各行をクリックすると `/ticket view` で詳細が開きます。ページ番号を省略した場合は 1 ページ目を表示します。 |
+
+`/ticket view` と `/ticket comment` の `<番号>` は Tab キーで補完できます。
+候補には、実行したプレイヤーが閲覧できるチケット (本人のチケット、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケット) の番号だけが、新しい順に最大 30 件表示されます。
 
 ## 権限
 

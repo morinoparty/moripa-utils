@@ -145,6 +145,24 @@ class TicketServiceTest {
         assertEquals(2, notifier.commented.size)
     }
 
+    @Test
+    @DisplayName("Lists only own tickets for players and all tickets for staff")
+    fun listsAccessibleTickets() = runBlocking {
+        // 実在するプレイヤー (_NIKOMARU) の UUID を使う
+        val nikomaruUuid = UUID.fromString("f8b761ec-4a54-48eb-a040-c5604042bcc9")
+        val mine = repository.create(TicketSubmission("test", nikomaruUuid, "_NIKOMARU", "bug", "mine"))
+        val others = repository.create(TicketSubmission("test", playerUuid, "Steve", "bug", "others"))
+
+        val player = TicketActor(nikomaruUuid, "_NIKOMARU", isStaff = false)
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+
+        assertEquals(listOf(mine), service.listAccessibleTickets(player, 0, 10))
+        // 運営はすべてのチケットを新しい順に閲覧できる
+        assertEquals(listOf(others, mine), service.listAccessibleTickets(staff, 0, 10))
+        // UUID を持たない運営以外の操作者は何も閲覧できない
+        assertEquals(emptyList<Ticket>(), service.listAccessibleTickets(TicketActor(null, "bot", isStaff = false), 0, 10))
+    }
+
     /** create の呼び出しを記録し、連番の id を振って返すリポジトリ */
     private class RecordingRepository : TicketRepository {
         val created = mutableListOf<TicketSubmission>()
@@ -170,6 +188,12 @@ class TicketServiceTest {
         override suspend fun findById(id: Long): Ticket? = tickets.firstOrNull { it.id == id }
 
         override suspend fun search(query: TicketSearchQuery): List<Ticket> = emptyList()
+
+        override suspend fun listRecent(playerUuid: UUID?, offset: Long, limit: Int): List<Ticket> = tickets
+            .filter { playerUuid == null || it.playerUuid == playerUuid }
+            .sortedByDescending { it.id }
+            .drop(offset.toInt())
+            .take(limit)
     }
 
     /** create の呼び出しを記録し、連番の id を振って返すコメントのリポジトリ */

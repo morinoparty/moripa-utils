@@ -12,6 +12,7 @@ package party.morino.moripautils.common.ticket
 import party.morino.moripautils.common.model.ticket.Ticket
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketSubmission
+import java.util.UUID
 
 /**
  * チケットの永続化を担うリポジトリ
@@ -42,4 +43,16 @@ interface TicketRepository {
      * @return 最大 [TicketSearchQuery.limit] 件のチケット
      */
     suspend fun search(query: TicketSearchQuery): List<Ticket>
+
+    /**
+     * チケットを新しい順 (id の降順) に取得する
+     *
+     * /ticket list のページ表示や、id の Tab 補完に使う。
+     *
+     * @param playerUuid この送信者のチケットだけに絞り込む (すべてのチケットを対象にする場合は null)
+     * @param offset 先頭から読み飛ばす件数
+     * @param limit 取得する最大件数
+     * @return 最大 [limit] 件のチケット (新しい順)
+     */
+    suspend fun listRecent(playerUuid: UUID?, offset: Long, limit: Int): List<Ticket>
 }

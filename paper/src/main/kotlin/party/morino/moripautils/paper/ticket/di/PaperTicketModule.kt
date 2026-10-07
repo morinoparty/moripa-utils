@@ -18,6 +18,7 @@ import party.morino.moripautils.paper.ticket.dialog.TicketCommentDialogFactory
 import party.morino.moripautils.paper.ticket.dialog.TicketCommentDialogSubmitHandler
 import party.morino.moripautils.paper.ticket.dialog.TicketDialogFactory
 import party.morino.moripautils.paper.ticket.dialog.TicketDialogSubmitHandler
+import party.morino.moripautils.paper.ticket.view.TicketListPresenter
 import party.morino.moripautils.paper.ticket.view.TicketThreadPresenter
 
 /**
@@ -37,6 +38,7 @@ object PaperTicketModule {
         single { TicketCommentDialogFactory() }
         single { TicketCommentDialogSubmitHandler() }
         single { TicketThreadPresenter() }
+        single { TicketListPresenter() }
         // TicketService が getAll<TicketNotifier>() で Webhook 通知と一緒に取り出す
         single { InGameTicketNotifier() } bind TicketNotifier::class
     }
