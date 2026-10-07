@@ -28,21 +28,27 @@ class TicketMineAuthIntegration : MoripaUtilsKoinComponent {
     /**
      * MineAuth にエンドポイントを登録する
      *
-     * 登録の解除は MineAuth がプラグインの無効化時に自動で行う。
+     * プラグインの無効化時は MineAuth が自動で登録を解除するが、再読み込み (/mu reload) では
+     * 戻り値を close して解除する (古い Koin コンテナを参照するハンドラーを残さず、同じ名前空間で登録し直すため)。
      * 登録に失敗しても ticket 機能の他の部分は動かしたいため、例外は投げずにログへ残す。
+     *
+     * @return 登録の解除に使うハンドル。登録できなかった場合は null
+     *   (呼び出し側が MineAuth の型に依存しないよう AutoCloseable として返す)
      */
-    fun register() {
+    fun register(): AutoCloseable? {
         // MineAuth はロード済みだがサービス登録がまだ、という狭いタイミングでは null になる
         val api = MineAuthApi.get(plugin.server)
         if (api == null) {
             plugin.logger.warning("MineAuth API is not available yet; ticket HTTP endpoints are disabled")
-            return
+            return null
         }
-        try {
+        return try {
             val registration = api.register(plugin, NAMESPACE, TicketApiHandler())
             plugin.logger.info("Ticket HTTP endpoints are mounted at ${registration.basePath}")
+            registration
         } catch (e: EndpointRegistrationException) {
             plugin.logger.severe("Failed to register ticket HTTP endpoints to MineAuth: ${e.message}")
+            null
         }
     }
 
