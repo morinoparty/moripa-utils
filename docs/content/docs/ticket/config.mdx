@@ -37,6 +37,7 @@ ticket {
     ]
     enabled=true
     webhook {
+        avatarUrl="https://api.mcheads.org/head/{uuid}/64"
         url=""
     }
 }
@@ -49,6 +50,7 @@ ticket {
 | `ticket.enabled` | `true` | チケット機能を有効にするかどうかです。`false` にすると `/ticket` コマンド、データベースへの接続、MineAuth の HTTP API はいずれも登録されません。 |
 | `ticket.categories` | 5 件 (下記参照) | Dialog に表示するカテゴリーです。記述した順に表示され、先頭のカテゴリーが初期選択になります。 |
 | `ticket.webhook.url` | `""` | 新しいチケットを通知する Discord Webhook の URL です。空文字の場合は通知を行いません。 |
+| `ticket.webhook.avatarUrl` | `"https://api.mcheads.org/head/{uuid}/64"` | Embed に表示するプレイヤーのアイコン画像の URL です。`{uuid}` はプレイヤーの UUID に、`{name}` はプレイヤー名に置き換えられます。空文字の場合はアイコンを表示しません。 |
 
 チケットの保存先は、プラグイン全体で共有する `database` ブロックで設定します。
 SQLite / MySQL の切り替えなどは [データベース](/docs/database) を参照してください。
@@ -87,6 +89,46 @@ ticket {
     }
 }
 ```
+
+### 送信される Embed
+
+新しいチケットと、プレイヤーからのコメントが Embed として送信されます。
+Embed は次の要素で構成されます。
+
+| 要素 | 新しいチケット | コメント |
+|------|---------------|---------|
+| 作成者 (上部) | 送信したプレイヤーの名前とアイコン | コメントを書き込んだ人の名前とアイコン |
+| タイトル | `Ticket Created - #<チケット番号>` | `Ticket Commented - #<チケット番号>` |
+| 本文 | チケットの情報 (下記) | チケットの情報 (下記) |
+| `MESSAGE` | お問い合わせの内容 | コメントの内容 |
+| フッター | `Created by <プレイヤー名>` と送信日時 | `Commented by <名前>` と書き込み日時 |
+
+チケットの情報は、送信したプレイヤーの UUID、送信元のサーバー、送信時にいたワールドと座標、カテゴリーをコードブロックで表示します。
+
+```yaml
+UUID: f8b761ec-4a54-48eb-a040-c5604042bcc9
+Server: main
+World: world_nether
+Location: X: 415, Y: 32, Z: 362
+Category: 荒らし、盗難について
+```
+
+### アイコン画像
+
+アイコン画像の URL は `ticket.webhook.avatarUrl` で変更できます。
+デフォルトでは [MC Heads](https://mcheads.org/) の頭部画像を、名前の変更に影響されない UUID で取得します。
+
+```text
+ticket {
+    webhook {
+        url = "https://discord.com/api/webhooks/xxxxxxxx/yyyyyyyy"
+        # プレイヤー名で取得する場合
+        avatarUrl = "https://api.mcheads.org/head/{name}/64"
+    }
+}
+```
+
+サービストークンからのコメントなど、UUID を持たない書き込みで `{uuid}` を使用している場合は、アイコンを表示しません。
 
 Webhook の送信は 10 秒でタイムアウトします。
 送信に失敗した場合やエラーの応答が返った場合は、サーバーのログに警告が記録されます。

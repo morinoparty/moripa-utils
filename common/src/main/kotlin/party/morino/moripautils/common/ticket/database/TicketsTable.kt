@@ -31,6 +31,18 @@ object TicketsTable : Table("tickets") {
     /** 送信時点のプレイヤー名 */
     val playerName = varchar("player_name", PLAYER_NAME_LENGTH)
 
+    /** 送信時にプレイヤーがいたワールド名 */
+    val world = varchar("world", WORLD_LENGTH)
+
+    /** 送信時にプレイヤーがいたブロックの X 座標 */
+    val blockX = integer("x")
+
+    /** 送信時にプレイヤーがいたブロックの Y 座標 */
+    val blockY = integer("y")
+
+    /** 送信時にプレイヤーがいたブロックの Z 座標 */
+    val blockZ = integer("z")
+
     /** カテゴリー id (config.conf の ticket.categories[].id) */
     val categoryId = varchar("category_id", CATEGORY_ID_LENGTH).index()
 
@@ -53,6 +65,9 @@ object TicketsTable : Table("tickets") {
 
     /** プレイヤー名の最大長 (Java 版は 16 文字だが Bedrock 連携のプレフィックスなどに備えて余裕を持たせる) */
     private const val PLAYER_NAME_LENGTH = 64
+
+    /** ワールド名の最大長 (Bukkit は長さを制限しないが、通常のワールド名には十分な長さにする) */
+    private const val WORLD_LENGTH = 128
 
     /** カテゴリー id の最大長 */
     private const val CATEGORY_ID_LENGTH = 64

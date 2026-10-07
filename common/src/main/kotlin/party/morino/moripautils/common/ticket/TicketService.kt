@@ -23,6 +23,7 @@ import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import java.util.UUID
@@ -53,6 +54,7 @@ class TicketService(
      *
      * @param playerUuid 送信したプレイヤーの UUID
      * @param playerName 送信したプレイヤーの名前
+     * @param location 送信時にプレイヤーがいた場所
      * @param categoryId 選択されたカテゴリーの id
      * @param content 入力された本文 (前後の空白は取り除いて保存する)
      * @return 送信結果。入力に誤りがある場合は保存も通知も行わない。通知の完了は待たない
@@ -60,6 +62,7 @@ class TicketService(
     suspend fun submit(
         playerUuid: UUID,
         playerName: String,
+        location: TicketLocation,
         categoryId: String,
         content: String,
     ): TicketSubmitResult {
@@ -75,6 +78,7 @@ class TicketService(
                 serverId = config.server,
                 playerUuid = playerUuid,
                 playerName = playerName,
+                location = location,
                 categoryId = category.id,
                 content = trimmedContent,
             ),
@@ -131,6 +135,23 @@ class TicketService(
      */
     suspend fun findAccessibleTicket(actor: TicketActor, ticketId: Long): Ticket? =
         repository.findById(ticketId)?.takeIf { resolveAuthorType(it, actor) != null }
+
+    /**
+     * 操作する人が閲覧できるチケットを新しい順に取得する
+     *
+     * 本人は自分のチケットを、運営はすべてのチケットを閲覧できる。
+     *
+     * @param actor 閲覧する人
+     * @param offset 先頭から読み飛ばす件数
+     * @param limit 取得する最大件数
+     * @return 最大 [limit] 件のチケット (新しい順)。UUID を持たない運営以外の操作者には空のリストを返す
+     */
+    suspend fun listAccessibleTickets(actor: TicketActor, offset: Long, limit: Int): List<Ticket> = when {
+        actor.isStaff -> repository.listRecent(null, offset, limit)
+        // UUID が無いと自分のチケットを特定できないため、何も返さない
+        actor.uuid == null -> emptyList()
+        else -> repository.listRecent(actor.uuid, offset, limit)
+    }
 
     /**
      * チケットのコメントを古い順に取得する (閲覧権限は呼び出し側で確認済みであること)

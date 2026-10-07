@@ -55,6 +55,10 @@ Web などからコメントを扱う場合は [MineAuth 連携](/docs/ticket/mi
 | `/ticket` | `moripautils.ticket.use` | お問い合わせ用の Dialog を開きます。プレイヤーのみ実行できます。 |
 | `/ticket view <番号>` | `moripautils.ticket.use` | チケットと最新 10 件のコメントをチャットに表示します。本人のチケットのみ表示でき、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケットを表示できます。 |
 | `/ticket comment <番号>` | `moripautils.ticket.use` | コメント入力用の Dialog を開きます。書き込める範囲は `/ticket view` と同じです。 |
+| `/ticket list [ページ]` | `moripautils.ticket.use` | 閲覧できるチケットを新しい順に 1 ページ 10 件ずつ表示します。各行をクリックすると `/ticket view` で詳細が開きます。ページ番号を省略した場合は 1 ページ目を表示します。 |
+
+`/ticket view` と `/ticket comment` の `<番号>` は Tab キーで補完できます。
+候補には、実行したプレイヤーが閲覧できるチケット (本人のチケット、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケット) の番号だけが、新しい順に最大 30 件表示されます。
 
 ## 権限
 
@@ -72,7 +76,7 @@ Web などからコメントを扱う場合は [MineAuth 連携](/docs/ticket/mi
 - `moripautils.ticket.notify` 権限を持つオンラインのプレイヤーへのチャットメッセージ
 - `ticket.webhook.url` に設定された Discord Webhook (未設定の場合は送信しません)
 
-Discord Webhook には、チケット番号・カテゴリー・プレイヤー・サーバー・内容を含む Embed が送信されます。
+Discord Webhook には、チケット番号・プレイヤー・サーバー・送信時のワールドと座標・カテゴリー・内容を含む Embed が送信されます (形式は [設定](/docs/ticket/config#送信される-embed) を参照してください)。
 内容に `@everyone` などが含まれていてもメンションは発生しません。
 
 コメントが書き込まれた場合は、書き込んだ人の立場によって通知先が変わります。

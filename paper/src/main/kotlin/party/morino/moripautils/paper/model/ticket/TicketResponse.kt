@@ -19,6 +19,7 @@ import party.morino.moripautils.common.model.ticket.Ticket
  * @property server 送信元のサーバー
  * @property playerUuid 送信者の UUID
  * @property playerName 送信時点のプレイヤー名
+ * @property location 送信時にプレイヤーがいた場所
  * @property categoryId カテゴリーの id
  * @property categoryName カテゴリーの表示名 (設定からカテゴリーが削除されている場合は null)
  * @property content 本文
@@ -31,6 +32,7 @@ data class TicketResponse(
     val server: String,
     val playerUuid: String,
     val playerName: String,
+    val location: TicketLocationResponse,
     val categoryId: String,
     val categoryName: String?,
     val content: String,
@@ -50,6 +52,7 @@ data class TicketResponse(
             server = ticket.serverId,
             playerUuid = ticket.playerUuid.toString(),
             playerName = ticket.playerName,
+            location = TicketLocationResponse.from(ticket.location),
             categoryId = ticket.categoryId,
             categoryName = categoryName,
             content = ticket.content,

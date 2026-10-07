@@ -13,10 +13,14 @@ import com.github.shynixn.mccoroutine.bukkit.minecraftDispatcher
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import kotlinx.coroutines.withContext
 import org.bukkit.entity.Player
+import org.incendo.cloud.annotation.specifier.Range
 import org.incendo.cloud.annotations.Argument
 import org.incendo.cloud.annotations.Command
 import org.incendo.cloud.annotations.CommandDescription
+import org.incendo.cloud.annotations.Default
 import org.incendo.cloud.annotations.Permission
+import org.incendo.cloud.annotations.suggestion.Suggestions
+import org.incendo.cloud.context.CommandContext
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.ticket.TicketService
 import party.morino.moripautils.paper.MoripaUtils
@@ -24,6 +28,7 @@ import party.morino.moripautils.paper.ticket.TicketPermissions
 import party.morino.moripautils.paper.ticket.dialog.TicketCommentDialogFactory
 import party.morino.moripautils.paper.ticket.dialog.TicketDialogFactory
 import party.morino.moripautils.paper.ticket.toTicketActor
+import party.morino.moripautils.paper.ticket.view.TicketListPresenter
 import party.morino.moripautils.paper.ticket.view.TicketThreadPresenter
 
 /**
@@ -73,7 +78,7 @@ class TicketCommand {
     @CommandDescription("お問い合わせとコメントを表示します")
     suspend fun view(
         source: CommandSourceStack,
-        @Argument("id") id: Long,
+        @Argument(value = "id", suggestions = TICKET_ID_SUGGESTIONS) id: Long,
     ) {
         val player = requirePlayer(source) ?: return
         val koin = MoripaUtilsKoinContext.getOrNull()
@@ -112,7 +117,7 @@ class TicketCommand {
     @CommandDescription("お問い合わせにコメントを書き込みます")
     suspend fun comment(
         source: CommandSourceStack,
-        @Argument("id") id: Long,
+        @Argument(value = "id", suggestions = TICKET_ID_SUGGESTIONS) id: Long,
     ) {
         val player = requirePlayer(source) ?: return
         val koin = MoripaUtilsKoinContext.getOrNull()
@@ -134,6 +139,60 @@ class TicketCommand {
     }
 
     /**
+     * 閲覧できるチケットを新しい順に一覧表示する
+     *
+     * 本人は自分のチケットを、運営 (moripautils.ticket.staff) はすべてのチケットを表示できる。
+     *
+     * @param source コマンドの実行元
+     * @param page 表示するページ番号 (1 始まり、省略時は 1)
+     */
+    @Command("ticket list [page]")
+    @Permission(TicketPermissions.USE)
+    @CommandDescription("お問い合わせの一覧を表示します")
+    suspend fun list(
+        source: CommandSourceStack,
+        @Argument("page") @Default("1") @Range(min = "1") page: Int,
+    ) {
+        val player = requirePlayer(source) ?: return
+        val koin = MoripaUtilsKoinContext.getOrNull()
+        val plugin = koin?.getOrNull<MoripaUtils>()
+        val service = koin?.getOrNull<TicketService>()
+        val presenter = koin?.getOrNull<TicketListPresenter>()
+        if (plugin == null || service == null || presenter == null) {
+            player.sendRichMessage("<red>現在お問い合わせを利用できません。")
+            return
+        }
+        val pageSize = TicketListPresenter.PAGE_SIZE
+        val offset = (page - 1).toLong() * pageSize
+        // 1 件多く取得して、次のページがあるかを判定する
+        val fetched = service.listAccessibleTickets(player.toTicketActor(), offset, pageSize + 1)
+        val hasNext = fetched.size > pageSize
+        withContext(plugin.minecraftDispatcher) {
+            presenter.present(player, fetched.take(pageSize), page, hasNext)
+        }
+    }
+
+    /**
+     * チケット id の Tab 補完候補を返す
+     *
+     * 実行元が閲覧できるチケット (本人は自分のもの、運営はすべて) だけを新しい順に返す。
+     * 入力途中の文字列による絞り込みは Cloud が行う。
+     *
+     * @param context コマンドの実行コンテキスト
+     * @return 補完候補のチケット id
+     */
+    @Suggestions(TICKET_ID_SUGGESTIONS)
+    suspend fun suggestTicketIds(context: CommandContext<CommandSourceStack>): List<String> {
+        // コンソールなどプレイヤー以外は自分のチケットを持たない
+        val player = context.sender().sender as? Player ?: return emptyList()
+        // 無効化中などでサービスが無い場合は候補を出さない
+        val service = MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketService>() ?: return emptyList()
+        return service
+            .listAccessibleTickets(player.toTicketActor(), 0, MAX_SUGGESTIONS)
+            .map { it.id.toString() }
+    }
+
+    /**
      * 実行元がプレイヤーであることを確認する
      *
      * @param source コマンドの実行元
@@ -146,5 +205,13 @@ class TicketCommand {
             sender.sendRichMessage("<red>このコマンドはプレイヤーのみ実行できます。")
         }
         return player
+    }
+
+    companion object {
+        /** チケット id の Tab 補完に使うサジェストプロバイダーの名前 */
+        const val TICKET_ID_SUGGESTIONS: String = "ticket-ids"
+
+        /** Tab 補完に出すチケット id の最大件数 (多すぎると候補の一覧が読めなくなる) */
+        private const val MAX_SUGGESTIONS: Int = 30
     }
 }

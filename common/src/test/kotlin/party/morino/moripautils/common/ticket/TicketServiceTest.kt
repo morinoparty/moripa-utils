@@ -33,6 +33,7 @@ import party.morino.moripautils.common.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import java.time.Instant
@@ -77,7 +78,7 @@ class TicketServiceTest {
     @Test
     @DisplayName("Rejects an unknown category without saving or notifying")
     fun rejectsUnknownCategory() = runBlocking {
-        val result = service.submit(playerUuid, "Steve", "unknown", "hello")
+        val result = service.submit(playerUuid, "Steve", LOCATION, "unknown", "hello")
 
         assertEquals(TicketSubmitResult.UnknownCategory("unknown"), result)
         assertTrue(repository.created.isEmpty())
@@ -87,7 +88,7 @@ class TicketServiceTest {
     @Test
     @DisplayName("Rejects blank content without saving or notifying")
     fun rejectsBlankContent() = runBlocking {
-        val result = service.submit(playerUuid, "Steve", "bug", "   \n ")
+        val result = service.submit(playerUuid, "Steve", LOCATION, "bug", "   \n ")
 
         assertEquals(TicketSubmitResult.BlankContent, result)
         assertTrue(repository.created.isEmpty())
@@ -97,14 +98,14 @@ class TicketServiceTest {
     @Test
     @DisplayName("Saves the trimmed ticket and notifies with the resolved category")
     fun savesAndNotifies() = runBlocking {
-        val result = service.submit(playerUuid, "Steve", "bug", "  block disappeared  ")
+        val result = service.submit(playerUuid, "Steve", LOCATION, "bug", "  block disappeared  ")
 
         val success = assertInstanceOf(TicketSubmitResult.Success::class.java, result)
         // submit は通知の完了を待たずに返るため、起動された通知の完了を待ってから検証する
         notificationJob.children.toList().joinAll()
         // 送信元サーバーは config.conf の server、本文は前後の空白を取り除いたもの
         assertEquals(
-            listOf(TicketSubmission("test", playerUuid, "Steve", "bug", "block disappeared")),
+            listOf(TicketSubmission("test", playerUuid, "Steve", LOCATION, "bug", "block disappeared")),
             repository.created,
         )
         assertEquals(listOf(success.ticket to "バグの報告"), notifier.notified.map { it.first to it.second.name })
@@ -113,7 +114,7 @@ class TicketServiceTest {
     @Test
     @DisplayName("Treats another player's ticket as not found when commenting")
     fun rejectsCommentFromStranger() = runBlocking {
-        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", "bug", "hello"))
+        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", LOCATION, "bug", "hello"))
         val stranger = TicketActor(UUID.randomUUID(), "Alex", isStaff = false)
 
         val result = service.addComment(stranger, ticket.id, "me too")
@@ -125,7 +126,7 @@ class TicketServiceTest {
     @Test
     @DisplayName("Saves comments from the owner as PLAYER and from staff as STAFF")
     fun savesCommentsWithAuthorType() = runBlocking {
-        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", "bug", "hello"))
+        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", LOCATION, "bug", "hello"))
         val staff = TicketActor(null, "discord-bot", isStaff = true)
 
         service.addComment(TicketActor(playerUuid, "Steve", isStaff = false), ticket.id, "  more info  ")
@@ -144,6 +145,24 @@ class TicketServiceTest {
         assertEquals(2, notifier.commented.size)
     }
 
+    @Test
+    @DisplayName("Lists only own tickets for players and all tickets for staff")
+    fun listsAccessibleTickets() = runBlocking {
+        // 実在するプレイヤー (_NIKOMARU) の UUID を使う
+        val nikomaruUuid = UUID.fromString("f8b761ec-4a54-48eb-a040-c5604042bcc9")
+        val mine = repository.create(TicketSubmission("test", nikomaruUuid, "_NIKOMARU", LOCATION, "bug", "mine"))
+        val others = repository.create(TicketSubmission("test", playerUuid, "Steve", LOCATION, "bug", "others"))
+
+        val player = TicketActor(nikomaruUuid, "_NIKOMARU", isStaff = false)
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+
+        assertEquals(listOf(mine), service.listAccessibleTickets(player, 0, 10))
+        // 運営はすべてのチケットを新しい順に閲覧できる
+        assertEquals(listOf(others, mine), service.listAccessibleTickets(staff, 0, 10))
+        // UUID を持たない運営以外の操作者は何も閲覧できない
+        assertEquals(emptyList<Ticket>(), service.listAccessibleTickets(TicketActor(null, "bot", isStaff = false), 0, 10))
+    }
+
     /** create の呼び出しを記録し、連番の id を振って返すリポジトリ */
     private class RecordingRepository : TicketRepository {
         val created = mutableListOf<TicketSubmission>()
@@ -156,6 +175,7 @@ class TicketServiceTest {
                 serverId = submission.serverId,
                 playerUuid = submission.playerUuid,
                 playerName = submission.playerName,
+                location = submission.location,
                 categoryId = submission.categoryId,
                 content = submission.content,
                 status = TicketStatus.OPEN,
@@ -168,6 +188,12 @@ class TicketServiceTest {
         override suspend fun findById(id: Long): Ticket? = tickets.firstOrNull { it.id == id }
 
         override suspend fun search(query: TicketSearchQuery): List<Ticket> = emptyList()
+
+        override suspend fun listRecent(playerUuid: UUID?, offset: Long, limit: Int): List<Ticket> = tickets
+            .filter { playerUuid == null || it.playerUuid == playerUuid }
+            .sortedByDescending { it.id }
+            .drop(offset.toInt())
+            .take(limit)
     }
 
     /** create の呼び出しを記録し、連番の id を振って返すコメントのリポジトリ */
@@ -206,3 +232,6 @@ class TicketServiceTest {
         }
     }
 }
+
+/** テストで使う送信時の場所 */
+private val LOCATION = TicketLocation("world_nether", 415, 32, -362)
