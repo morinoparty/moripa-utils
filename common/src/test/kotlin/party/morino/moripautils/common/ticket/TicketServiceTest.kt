@@ -150,8 +150,8 @@ class TicketServiceTest {
     fun listsAccessibleTickets() = runBlocking {
         // 実在するプレイヤー (_NIKOMARU) の UUID を使う
         val nikomaruUuid = UUID.fromString("f8b761ec-4a54-48eb-a040-c5604042bcc9")
-        val mine = repository.create(TicketSubmission("test", nikomaruUuid, "_NIKOMARU", "bug", "mine"))
-        val others = repository.create(TicketSubmission("test", playerUuid, "Steve", "bug", "others"))
+        val mine = repository.create(TicketSubmission("test", nikomaruUuid, "_NIKOMARU", LOCATION, "bug", "mine"))
+        val others = repository.create(TicketSubmission("test", playerUuid, "Steve", LOCATION, "bug", "others"))
 
         val player = TicketActor(nikomaruUuid, "_NIKOMARU", isStaff = false)
         val staff = TicketActor(null, "discord-bot", isStaff = true)
