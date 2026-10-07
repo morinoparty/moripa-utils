@@ -104,6 +104,11 @@ sourceSets.main {
                 server("MineAuth", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
             }
             permissions {
+                // /mu reload で config.conf を再読み込みする権限
+                register("moripautils.reload") {
+                    description = "Allows reloading config.conf with /mu reload"
+                    default = Permission.Default.OP
+                }
                 // /ticket でお問い合わせを送信する権限 (全員に許可)
                 register("moripautils.ticket.use") {
                     description = "Allows submitting tickets with /ticket"

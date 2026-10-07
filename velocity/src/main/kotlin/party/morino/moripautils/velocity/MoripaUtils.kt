@@ -35,12 +35,15 @@ import party.morino.moripautils.common.observability.metrics.MetricsExporter
 import party.morino.moripautils.common.model.config.HttpServerConfig
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.ObservabilityConfig
+import party.morino.moripautils.common.model.reload.ReloadResult
 import party.morino.moripautils.velocity.di.VelocityModule
+import party.morino.moripautils.velocity.reload.command.ReloadCommandRegistrar
 import party.morino.moripautils.velocity.observability.metrics.ConnectionEventListener
 import party.morino.moripautils.velocity.observability.metrics.ProxyInfoCollector
 import party.morino.moripautils.velocity.observability.metrics.ProxyPlayerMetricsCollector
 import java.io.IOException
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * MoripaUtils の Velocity 向けプラグイン本体 (現在は observability 機能としてプロキシのメトリクスを Prometheus 形式で公開する)
@@ -63,10 +66,20 @@ class MoripaUtils @Inject constructor(
     @DataDirectory private val dataDirectory: Path,
 ) : MoripaUtilsKoinComponent {
 
+    /**
+     * 再読み込みを実行中かどうか (/muv reload が連打されても 1 回ずつ処理する)
+     *
+     * Velocity 版の JAR は kotlinx-coroutines を同梱しないため、Mutex ではなく AtomicBoolean で排他する。
+     */
+    private val reloading = AtomicBoolean(false)
+
+    /** 登録中の接続イベントのリスナー (再読み込み時に解除するため保持する。observability が無効なら null) */
+    private var connectionEventListener: ConnectionEventListener? = null
+
     @Subscribe
     @Suppress("UnusedParameter")
     fun onProxyInitialization(event: ProxyInitializeEvent) {
-        val config = MoripaUtilsConfigLoader(dataDirectory, DEFAULT_CONFIG).load()
+        val config = createConfigLoader().load()
         setupKoin(config)
         MoripaUtilsCommon.init()
 
@@ -76,15 +89,10 @@ class MoripaUtils @Inject constructor(
             ExecutionCoordinator.asyncCoordinator(),
             SenderMapper.identity(),
         )
+        // 各機能のコマンドを登録する
+        ReloadCommandRegistrar.register(commandManager)
 
-        // TODO: 各機能のコマンド (設定リロードなど) はここで commandManager に登録する
-
-        // チケット機能は Paper 専用のため、Velocity では observability 機能だけを扱う
-        if (config.observability.enabled) {
-            startMetricsExporter(config.observability)
-        } else {
-            logger.info("Observability is disabled in config.conf")
-        }
+        startFeatures(config)
 
         logger.info("MoripaUtils has been enabled!")
     }
@@ -92,12 +100,84 @@ class MoripaUtils @Inject constructor(
     @Subscribe
     @Suppress("UnusedParameter")
     fun onProxyShutdown(event: ProxyShutdownEvent) {
-        // 設定の読み込みに失敗して Koin が起動していない場合もあるので、存在する場合だけ停止する
-        MoripaUtilsKoinContext.getOrNull()?.getOrNull<MetricsExporter>()?.stop()
+        stopFeatures()
         // 専用コンテナを閉じる (他プラグインの Koin には影響しない)
         MoripaUtilsKoinContext.stop()
         logger.info("MoripaUtils has been disabled!")
     }
+
+    /**
+     * config.conf を読み込み直し、すべての機能を新しい設定で起動し直す (/muv reload)
+     *
+     * 先に新しい設定を検証し、不正な場合は稼働中の機能に触れずに失敗を返す。
+     * 検証に成功した場合だけ、各機能の停止 → Koin コンテナの作り直し → 各機能の起動 を行う。
+     * ファイルの読み込みを含むため、プロキシのイベントスレッドではなく Cloud の非同期コーディネーターなどから呼ぶこと。
+     *
+     * @return 再読み込みの結果
+     */
+    fun reload(): ReloadResult {
+        // 実行中の再読み込みを待たせるより、重複した要求だと伝える方が分かりやすい
+        if (!reloading.compareAndSet(false, true)) {
+            return ReloadResult.InProgress
+        }
+        try {
+            val config = try {
+                createConfigLoader().load()
+            } catch (e: IllegalStateException) {
+                // 構文や値の誤り
+                logger.warn("Reload aborted because {} is invalid: {}", MoripaUtilsConfigLoader.CONFIG_FILE_NAME, e.message)
+                return ReloadResult.InvalidConfig(e.message ?: e.toString())
+            } catch (e: IOException) {
+                // ファイルの読み書きの失敗
+                logger.warn("Reload aborted because {} could not be read: {}", MoripaUtilsConfigLoader.CONFIG_FILE_NAME, e.message)
+                return ReloadResult.InvalidConfig(e.message ?: e.toString())
+            }
+
+            stopFeatures()
+            // start() は古いコンテナを閉じてから作り直す
+            setupKoin(config)
+            startFeatures(config)
+            logger.info("Reloaded {}", MoripaUtilsConfigLoader.CONFIG_FILE_NAME)
+            // Velocity のコマンドは設定に依存しないため、再起動が必要になることはない
+            return ReloadResult.Success()
+        } finally {
+            reloading.set(false)
+        }
+    }
+
+    /**
+     * 設定で有効化されている機能を起動する
+     *
+     * チケット機能は Paper 専用のため、Velocity では observability 機能だけを扱う。
+     *
+     * @param config 読み込み済みの設定
+     */
+    private fun startFeatures(config: MoripaUtilsConfig) {
+        if (config.observability.enabled) {
+            startMetricsExporter(config.observability)
+        } else {
+            logger.info("Observability is disabled in config.conf")
+        }
+    }
+
+    /**
+     * 起動中の機能をすべて停止する (Koin コンテナ自体は閉じない)
+     *
+     * 設定の読み込みに失敗して Koin が起動していない場合などは何もしない。
+     */
+    private fun stopFeatures() {
+        // 古いレジストリへ書き込み続けないよう、プラグイン本体の @Subscribe は残してリスナーだけを解除する
+        connectionEventListener?.let { listener -> server.eventManager.unregisterListener(this, listener) }
+        connectionEventListener = null
+        MoripaUtilsKoinContext.getOrNull()?.getOrNull<MetricsExporter>()?.stop()
+    }
+
+    /**
+     * データフォルダの config.conf を扱うローダーを生成する
+     *
+     * @return Velocity 向けの既定値を持つローダー
+     */
+    private fun createConfigLoader(): MoripaUtilsConfigLoader = MoripaUtilsConfigLoader(dataDirectory, DEFAULT_CONFIG)
 
     /**
      * コレクターを組み立ててイベントリスナーを登録し、メトリクスの HTTP サーバーを起動する
@@ -107,7 +187,7 @@ class MoripaUtils @Inject constructor(
      * @param config observability 機能の設定
      */
     private fun startMetricsExporter(config: ObservabilityConfig) {
-        val connectionEventListener = ConnectionEventListener()
+        val listener = ConnectionEventListener()
         val collectors = buildList<MetricsCollector> {
             // JVM メトリクスは設定で無効化できる
             if (config.metrics.jvm) {
@@ -115,11 +195,12 @@ class MoripaUtils @Inject constructor(
             }
             add(ProxyPlayerMetricsCollector())
             add(ProxyInfoCollector())
-            add(connectionEventListener)
+            add(listener)
         }
 
-        // @Subscribe を持つコレクターは Velocity のイベントリスナーとしても登録する
-        server.eventManager.register(this, connectionEventListener)
+        // @Subscribe を持つコレクターは Velocity のイベントリスナーとしても登録する (再読み込み時に解除できるよう覚えておく)
+        server.eventManager.register(this, listener)
+        connectionEventListener = listener
 
         try {
             get<MetricsExporter>().start(collectors)

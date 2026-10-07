@@ -18,6 +18,7 @@ import org.incendo.cloud.execution.ExecutionCoordinator
 import org.incendo.cloud.paper.PaperCommandManager
 import party.morino.moripautils.common.config.MoripaUtilsConfigLoader
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
+import party.morino.moripautils.paper.reload.command.ReloadCommandRegistrar
 import party.morino.moripautils.paper.ticket.command.TicketCommandRegistrar
 import java.io.IOException
 
@@ -35,6 +36,9 @@ class MoripaUtilsBootstrap : PluginBootstrap {
     /** ブートストラップ段階で生成したコマンドマネージャー (createPlugin でプラグイン本体へ渡す) */
     private var commandManager: PaperCommandManager<CommandSourceStack>? = null
 
+    /** /ticket を登録したかどうか (再読み込みで ticket 機能を有効にした場合に再起動が必要か判定するためプラグイン本体へ渡す) */
+    private var ticketCommandRegistered: Boolean = false
+
     override fun bootstrap(context: BootstrapContext) {
         val manager =
             PaperCommandManager
@@ -42,11 +46,14 @@ class MoripaUtilsBootstrap : PluginBootstrap {
                 .executionCoordinator(ExecutionCoordinator.asyncCoordinator())
                 .buildBootstrapped(context)
         commandManager = manager
+        // /mu reload はどの機能にも属さないため、config.conf の内容に関係なく登録する
+        ReloadCommandRegistrar.register(manager)
 
         val config = loadConfigOrNull(context) ?: return
         // 無効な機能のコマンドは登録しない
         if (config.ticket.enabled) {
             TicketCommandRegistrar.register(manager)
+            ticketCommandRegistered = true
         }
     }
 
@@ -71,6 +78,6 @@ class MoripaUtilsBootstrap : PluginBootstrap {
     }
 
     override fun createPlugin(context: PluginProviderContext): JavaPlugin {
-        return MoripaUtils(commandManager)
+        return MoripaUtils(commandManager, ticketCommandRegistered)
     }
 }

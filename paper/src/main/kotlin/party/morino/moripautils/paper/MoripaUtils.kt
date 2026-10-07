@@ -10,8 +10,13 @@
 package party.morino.moripautils.paper
 
 import com.github.shynixn.mccoroutine.bukkit.SuspendingJavaPlugin
+import com.github.shynixn.mccoroutine.bukkit.minecraftDispatcher
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
+import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
 import org.incendo.cloud.paper.PaperCommandManager
 import org.koin.core.component.get
@@ -25,6 +30,7 @@ import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.model.config.DatabaseConfig
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.ObservabilityConfig
+import party.morino.moripautils.common.model.reload.ReloadResult
 import party.morino.moripautils.common.observability.http.MetricsHttpServer
 import party.morino.moripautils.common.observability.metrics.JvmMetricsCollector
 import party.morino.moripautils.common.observability.metrics.MetricsCollector
@@ -52,20 +58,107 @@ import java.io.IOException
  * observability 機能が有効な場合は、メトリクスコレクターを登録して Prometheus 用の HTTP サーバーと
  * メインスレッドのサンプラーを起動する。
  * ticket 機能が有効な場合は、/ticket が使うサービスを読み込み、MineAuth があれば HTTP API を登録する。
+ * /mu reload ([reload]) では、各機能を停止してから新しい設定で Koin コンテナごと作り直す。
  *
  * @property commandManager ブートストラップ段階で生成した Cloud のコマンドマネージャー。
  *   MockBukkit のテストなどブートストラッパーを経由せずに生成された場合は null
+ * @property ticketCommandRegistered ブートストラップ段階で /ticket を登録したかどうか
+ *   (再読み込みで ticket 機能を有効にしてもコマンドは増えないため、再起動が必要かの判定に使う)
  */
 open class MoripaUtils(
     val commandManager: PaperCommandManager<CommandSourceStack>? = null,
+    private val ticketCommandRegistered: Boolean = false,
 ) : SuspendingJavaPlugin(),
     MoripaUtilsKoinComponent {
+
+    /** 再読み込みの同時実行を防ぐロック (/mu reload が連打されても 1 回ずつ処理する) */
+    private val reloadMutex = Mutex()
+
+    /**
+     * 自分で登録した Bukkit のイベントリスナー
+     *
+     * プラグインの無効化時は Bukkit が自動で解除するが、再読み込み時は自前で解除しないと二重に登録される。
+     * Cloud などがこのプラグイン名義で登録したリスナーまで消さないよう、HandlerList.unregisterAll(plugin) は使わない。
+     */
+    private val registeredListeners = mutableListOf<Listener>()
+
+    /**
+     * MineAuth に登録した ticket の HTTP API (未登録なら null)
+     *
+     * MineAuth の型を参照すると MineAuth が無い環境でクラス解決に失敗するため、AutoCloseable として保持する。
+     */
+    private var mineAuthRegistration: AutoCloseable? = null
 
     override suspend fun onEnableAsync() {
         val config = loadConfig()
         setupKoin(config)
         MoripaUtilsCommon.init()
+        startFeatures(config)
 
+        logger.info("${pluginMeta.name} v${pluginMeta.version} has been enabled!")
+    }
+
+    override suspend fun onDisableAsync() {
+        stopFeatures()
+        // 専用コンテナを閉じる (他プラグインの Koin には影響しない)
+        MoripaUtilsKoinContext.stop()
+        logger.info("${pluginMeta.name} has been disabled!")
+    }
+
+    /**
+     * config.conf を読み込み直し、すべての機能を新しい設定で起動し直す (/mu reload)
+     *
+     * 先に新しい設定を検証し、不正な場合は稼働中の機能に触れずに失敗を返す。
+     * 検証に成功した場合だけ、各機能の停止 → Koin コンテナの作り直し → 各機能の起動 をメインスレッドで行う。
+     * Cloud の非同期コーディネーターなど、どのスレッドから呼んでもよい。
+     *
+     * @return 再読み込みの結果
+     */
+    suspend fun reload(): ReloadResult {
+        // 実行中の再読み込みを待たせるより、重複した要求だと伝える方が分かりやすい
+        if (!reloadMutex.tryLock()) {
+            return ReloadResult.InProgress
+        }
+        try {
+            // ファイルの読み込みはメインスレッドを止めないよう I/O スレッドで行う
+            val config = try {
+                withContext(Dispatchers.IO) { createConfigLoader().load() }
+            } catch (e: IllegalStateException) {
+                // 構文や値の誤り
+                logger.warning("Reload aborted because ${MoripaUtilsConfigLoader.CONFIG_FILE_NAME} is invalid: ${e.message}")
+                return ReloadResult.InvalidConfig(e.message ?: e.toString())
+            } catch (e: IOException) {
+                // ファイルの読み書きの失敗
+                logger.warning("Reload aborted because ${MoripaUtilsConfigLoader.CONFIG_FILE_NAME} could not be read: ${e.message}")
+                return ReloadResult.InvalidConfig(e.message ?: e.toString())
+            }
+
+            // リスナーの登録 / 解除やサンプラーの初回サンプリングはメインスレッドで行う必要がある
+            withContext(minecraftDispatcher) {
+                stopFeatures()
+                // start() は古いコンテナを閉じてから作り直す
+                setupKoin(config)
+                startFeatures(config)
+            }
+            logger.info("Reloaded ${MoripaUtilsConfigLoader.CONFIG_FILE_NAME}")
+
+            // /ticket はブートストラップ段階でしか登録できない
+            val restartRequired = config.ticket.enabled && !ticketCommandRegistered
+            if (restartRequired) {
+                logger.warning("Ticket was enabled by reload, but /ticket is not registered until the server restarts")
+            }
+            return ReloadResult.Success(restartRequiredForCommands = restartRequired)
+        } finally {
+            reloadMutex.unlock()
+        }
+    }
+
+    /**
+     * 設定で有効化されている機能を起動する
+     *
+     * @param config 読み込み済みの設定
+     */
+    private fun startFeatures(config: MoripaUtilsConfig) {
         // 機能ごとに設定で有効化されている場合だけ起動する
         if (config.observability.enabled) {
             startObservability(config.observability)
@@ -77,22 +170,26 @@ open class MoripaUtils(
         } else {
             logger.info("Ticket is disabled in config.conf")
         }
-
-        logger.info("${pluginMeta.name} v${pluginMeta.version} has been enabled!")
     }
 
-    override suspend fun onDisableAsync() {
+    /**
+     * 起動中の機能をすべて停止する (Koin コンテナ自体は閉じない)
+     *
+     * 起動していない機能や、有効化に失敗して Koin が存在しない場合は何もしない。
+     */
+    private fun stopFeatures() {
         // 有効化に失敗して Koin やモジュールが存在しない場合もあるため、定義があるときだけ停止処理を行う
-        MoripaUtilsKoinContext.getOrNull()?.let { koin ->
-            koin.getOrNull<MetricsSampler>()?.stop()
-            koin.getOrNull<MetricsExporter>()?.stop()
-            // ticket 機能が無効な場合はサービスもデータベースも定義されていない
-            koin.getOrNull<TicketService>()?.close()
-            koin.getOrNull<MoripaUtilsDatabase>()?.close()
-        }
-        // 専用コンテナを閉じる (他プラグインの Koin には影響しない)
-        MoripaUtilsKoinContext.stop()
-        logger.info("${pluginMeta.name} has been disabled!")
+        val koin = MoripaUtilsKoinContext.getOrNull()
+        koin?.getOrNull<MetricsSampler>()?.stop()
+        // 古いレジストリへ書き込み続けないよう、エクスポーターより先にイベントの購読をやめる
+        registeredListeners.forEach { listener -> HandlerList.unregisterAll(listener) }
+        registeredListeners.clear()
+        koin?.getOrNull<MetricsExporter>()?.stop()
+        // 古いコンテナを参照する API ハンドラーが残らないよう、MineAuth の登録を解除する
+        closeMineAuthRegistration()
+        // ticket 機能が無効な場合はサービスもデータベースも定義されていない
+        koin?.getOrNull<TicketService>()?.close()
+        koin?.getOrNull<MoripaUtilsDatabase>()?.close()
     }
 
     /**
@@ -102,7 +199,7 @@ open class MoripaUtils(
      * @throws IllegalStateException config.conf の内容が不正な場合 (プラグインの有効化を失敗させる)
      */
     private fun loadConfig(): MoripaUtilsConfig {
-        val loader = MoripaUtilsConfigLoader(dataFolder.toPath(), MoripaUtilsConfig())
+        val loader = createConfigLoader()
         return try {
             loader.load()
         } catch (e: IllegalStateException) {
@@ -111,6 +208,13 @@ open class MoripaUtils(
             throw e
         }
     }
+
+    /**
+     * データフォルダの config.conf を扱うローダーを生成する
+     *
+     * @return Paper 向けの既定値を持つローダー
+     */
+    private fun createConfigLoader(): MoripaUtilsConfigLoader = MoripaUtilsConfigLoader(dataFolder.toPath(), MoripaUtilsConfig())
 
     /**
      * このプラグイン専用の Koin コンテナを起動する
@@ -147,7 +251,7 @@ open class MoripaUtils(
         )
         // MineAuth は任意依存。API クラスに触れる前に Bukkit の API だけで存在を確認する
         if (server.pluginManager.getPlugin(MINEAUTH_PLUGIN_NAME) != null) {
-            registerMineAuthSafely()
+            mineAuthRegistration = registerMineAuthSafely()
         } else {
             logger.info("MineAuth is not installed; ticket HTTP endpoints are disabled")
         }
@@ -159,10 +263,12 @@ open class MoripaUtils(
      * 導入済みの MineAuth が compileOnly の mineauth-api と互換でない場合、クラス解決時に
      * LinkageError (NoClassDefFoundError / NoSuchMethodError など) が発生する。
      * これが onEnableAsync の外へ漏れると、起動済みの observability ごとプラグインが無効化されるため、ここで握りつぶす。
+     *
+     * @return 登録の解除に使うハンドル。登録できなかった場合は null
      */
     @Suppress("TooGenericExceptionCaught")
-    private fun registerMineAuthSafely() {
-        try {
+    private fun registerMineAuthSafely(): AutoCloseable? {
+        return try {
             TicketMineAuthIntegration().register()
         } catch (e: CancellationException) {
             // コルーチンのキャンセルは握りつぶさず伝播させる
@@ -170,9 +276,27 @@ open class MoripaUtils(
         } catch (e: LinkageError) {
             // API の互換性が無い MineAuth が導入されている
             logger.warning("MineAuth integration failed (incompatible MineAuth API?); ticket HTTP endpoints are disabled: $e")
+            null
         } catch (e: Exception) {
             // その他の予期しない失敗も ticket の HTTP API だけを諦める
             logger.warning("MineAuth integration failed; ticket HTTP endpoints are disabled: $e")
+            null
+        }
+    }
+
+    /**
+     * MineAuth に登録した ticket の HTTP API を解除する
+     *
+     * 登録していない場合は何もしない。解除に失敗しても他の機能の停止は続けたいため、例外はログに残すだけにする。
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private fun closeMineAuthRegistration() {
+        val registration = mineAuthRegistration ?: return
+        mineAuthRegistration = null
+        try {
+            registration.close()
+        } catch (e: Exception) {
+            logger.warning("Failed to unregister ticket HTTP endpoints from MineAuth: $e")
         }
     }
 
@@ -186,6 +310,8 @@ open class MoripaUtils(
         // Bukkit のイベントを購読するコレクターはリスナーとして登録する
         collectors.filterIsInstance<Listener>().forEach { listener ->
             server.pluginManager.registerEvents(listener, this)
+            // 再読み込み時に解除できるよう覚えておく
+            registeredListeners.add(listener)
         }
 
         startExporter(config, collectors)
