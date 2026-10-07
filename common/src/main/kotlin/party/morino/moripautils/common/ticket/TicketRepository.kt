@@ -10,7 +10,10 @@
 package party.morino.moripautils.common.ticket
 
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketCloseReason
+import party.morino.moripautils.common.model.ticket.TicketListFilter
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
+import party.morino.moripautils.common.model.ticket.TicketStatus
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import java.util.UUID
 
@@ -50,9 +53,25 @@ interface TicketRepository {
      * /ticket list のページ表示や、id の Tab 補完に使う。
      *
      * @param playerUuid この送信者のチケットだけに絞り込む (すべてのチケットを対象にする場合は null)
+     * @param filter 状態やプレイヤー名による絞り込み条件
      * @param offset 先頭から読み飛ばす件数
      * @param limit 取得する最大件数
      * @return 最大 [limit] 件のチケット (新しい順)
      */
-    suspend fun listRecent(playerUuid: UUID?, offset: Long, limit: Int): List<Ticket>
+    suspend fun listRecent(
+        playerUuid: UUID?,
+        filter: TicketListFilter,
+        offset: Long,
+        limit: Int,
+    ): List<Ticket>
+
+    /**
+     * チケットの状態を変更する
+     *
+     * @param id チケットの id
+     * @param status 変更後の状態
+     * @param closeReason クローズした理由 (オープンに戻す場合は null)
+     * @return 変更後のチケット、存在しない場合は null
+     */
+    suspend fun updateStatus(id: Long, status: TicketStatus, closeReason: TicketCloseReason?): Ticket?
 }

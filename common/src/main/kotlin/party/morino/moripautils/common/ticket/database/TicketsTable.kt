@@ -11,6 +11,7 @@ package party.morino.moripautils.common.ticket.database
 
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.javatime.timestamp
+import party.morino.moripautils.common.model.ticket.TicketCloseReason
 import party.morino.moripautils.common.model.ticket.TicketStatus
 
 /**
@@ -51,6 +52,9 @@ object TicketsTable : Table("tickets") {
 
     /** 対応状況 (enum の名前で保存する) */
     val status = enumerationByName("status", STATUS_LENGTH, TicketStatus::class).index()
+
+    /** クローズした理由 (enum の名前で保存する。オープン中は null) */
+    val closeReason = enumerationByName("close_reason", STATUS_LENGTH, TicketCloseReason::class).nullable()
 
     /** 送信日時 */
     val createdAt = timestamp("created_at")

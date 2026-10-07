@@ -23,6 +23,7 @@ import java.util.UUID
  * @property categoryId カテゴリーの id (config.conf の ticket.categories[].id)
  * @property content お問い合わせの本文
  * @property status 対応状況
+ * @property closeReason クローズした理由 (オープン中は null)
  * @property createdAt 送信日時
  */
 data class Ticket(
@@ -35,4 +36,5 @@ data class Ticket(
     val content: String,
     val status: TicketStatus,
     val createdAt: Instant,
+    val closeReason: TicketCloseReason? = null,
 )

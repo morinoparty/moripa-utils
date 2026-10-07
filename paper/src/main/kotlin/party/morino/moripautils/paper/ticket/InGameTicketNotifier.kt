@@ -20,8 +20,10 @@ import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.ticket.Ticket
 import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.common.model.ticket.TicketStatusChange
 import party.morino.moripautils.common.ticket.TicketNotifier
 import party.morino.moripautils.paper.MoripaUtils
+import party.morino.moripautils.paper.ticket.view.TicketStatusLabel
 import java.util.logging.Level
 
 /**
@@ -29,6 +31,8 @@ import java.util.logging.Level
  *
  * - 新しいチケット / プレイヤーからのコメント: 通知権限 (moripautils.ticket.notify) を持つプレイヤーへ
  * - 運営からのコメント: チケットを送信した本人へ (このサーバーにオンラインの場合のみ)
+ * - 本人によるクローズ: 通知権限を持つプレイヤーへ
+ * - 運営によるクローズ / 再オープン: チケットを送信した本人へ (このサーバーにオンラインの場合のみ)
  */
 class InGameTicketNotifier :
     TicketNotifier,
@@ -77,6 +81,66 @@ class InGameTicketNotifier :
             // 通知の失敗でコメントの書き込みを失敗させない
             plugin.logger.log(Level.WARNING, "Failed to notify comment #${comment.id} on ticket #${ticket.id}", e)
         }
+    }
+
+    override suspend fun notifyStatusChange(change: TicketStatusChange) {
+        val ticket = change.ticket
+        try {
+            // オンラインプレイヤーの一覧や権限はメインスレッドで読む
+            withContext(plugin.minecraftDispatcher) {
+                if (change.actor.uuid == ticket.playerUuid) {
+                    // 本人が自分で閉じた場合は、対応中の運営に知らせる
+                    notifyStaffOfStatusChange(change)
+                } else {
+                    // 運営が変更した場合は、送信した本人に結果を知らせる
+                    notifyOwnerOfStatusChange(change)
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 通知の失敗で状態の変更を失敗させない
+            plugin.logger.log(Level.WARNING, "Failed to notify status change of ticket #${ticket.id}", e)
+        }
+    }
+
+    /**
+     * 本人による状態の変更を、通知権限を持つプレイヤーへ知らせる (メインスレッドで呼ぶこと)
+     *
+     * @param change 状態の変更
+     */
+    private fun notifyStaffOfStatusChange(change: TicketStatusChange) {
+        val ticket = change.ticket
+        server.onlinePlayers
+            // 変更した本人には知らせない
+            .filter { it.hasPermission(TicketPermissions.NOTIFY) && it.uniqueId != change.actor.uuid }
+            .forEach { staff ->
+                staff.sendRichMessage(
+                    "<gold>[Ticket]</gold> <player> さんがお問い合わせ #<id> を「<status>」にしました " +
+                        "<click:run_command:'/ticket view ${ticket.id}'><aqua>[表示]</aqua></click>",
+                    Placeholder.unparsed("player", change.actor.name),
+                    Placeholder.unparsed("id", ticket.id.toString()),
+                    Placeholder.unparsed("status", TicketStatusLabel.of(ticket)),
+                )
+            }
+    }
+
+    /**
+     * 運営による状態の変更を、チケットを送信した本人へ知らせる (メインスレッドで呼ぶこと)
+     *
+     * 共有データベースを使っていても、通知できるのはこのサーバーにオンラインの場合だけ。
+     *
+     * @param change 状態の変更
+     */
+    private fun notifyOwnerOfStatusChange(change: TicketStatusChange) {
+        val ticket = change.ticket
+        val owner = server.getPlayer(ticket.playerUuid) ?: return
+        owner.sendRichMessage(
+            "<gold>[Ticket]</gold> お問い合わせ #<id> が「<status>」になりました " +
+                "<click:run_command:'/ticket view ${ticket.id}'><aqua>[表示]</aqua></click>",
+            Placeholder.unparsed("id", ticket.id.toString()),
+            Placeholder.unparsed("status", TicketStatusLabel.of(ticket)),
+        )
     }
 
     /**

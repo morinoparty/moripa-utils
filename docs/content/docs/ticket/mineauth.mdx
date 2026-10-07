@@ -108,7 +108,8 @@ MineAuth 同梱の PureTickets アドオンが使用する `tickets` 名前空�
     "categoryName": "バグの報告",
     "content": "スポーン地点のブロックが消えています。",
     "status": "OPEN",
-    "createdAt": "2026-10-02T12:34:56.789Z"
+    "createdAt": "2026-10-02T12:34:56.789Z",
+    "closeReason": null
 }
 ```
 
@@ -122,6 +123,7 @@ MineAuth 同梱の PureTickets アドオンが使用する `tickets` 名前空�
 | `content` | お問い合わせの内容です。 |
 | `status` | 状態です (`OPEN` / `CLOSED`)。 |
 | `createdAt` | 送信日時です (ISO-8601 形式、UTC)。 |
+| `closeReason` | クローズした理由です (`done` / `not-planned` / `duplicate`)。オープン中は `null` になります。 |
 
 一覧のエンドポイントは、チケットの配列とページングの情報を返します。
 

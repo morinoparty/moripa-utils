@@ -11,20 +11,23 @@ package party.morino.moripautils.common.ticket.webhook
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.config.TicketWebhookConfig
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketActor
+import party.morino.moripautils.common.model.ticket.TicketCloseReason
 import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.common.model.ticket.TicketStatusChange
 import java.time.Instant
 import java.util.UUID
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
 
 /**
  * Discord Webhook の本文 (Embed) とアイコン URL の組み立てを検証する
@@ -50,7 +53,7 @@ class DiscordWebhookPayloadTest {
         val payload = DiscordWebhookPayload.create(
             ticket,
             TicketCategory("grief", "荒らし、盗難について"),
-            TicketWebhookConfig.DEFAULT_AVATAR_URL,
+            TicketWebhookConfig(),
         )
 
         val embed = payload["embeds"]!!.jsonArray.single().jsonObject
@@ -89,12 +92,31 @@ class DiscordWebhookPayloadTest {
             createdAt = Instant.EPOCH,
         )
 
-        val payload = DiscordWebhookPayload.createComment(ticket, comment, null, TicketWebhookConfig.DEFAULT_AVATAR_URL)
+        val payload = DiscordWebhookPayload.createComment(ticket, comment, null, TicketWebhookConfig())
 
         val embed = payload["embeds"]!!.jsonArray.single().jsonObject
         assertEquals("Ticket Commented - #118", embed["title"]!!.jsonPrimitive.content)
         assertEquals("Commented by discord-bot", embed["footer"]!!.jsonObject["text"]!!.jsonPrimitive.content)
         assertFalse("icon_url" in embed["author"]!!.jsonObject)
+    }
+
+    @Test
+    @DisplayName("Builds the close embed with the webhook sender name and icon")
+    fun buildsStatusChangeEmbed() {
+        val closed = ticket.copy(status = TicketStatus.CLOSED, closeReason = TicketCloseReason.DONE)
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+        val change = TicketStatusChange(closed, staff, Instant.parse("2026-08-18T13:05:00Z"))
+
+        val payload = DiscordWebhookPayload.createStatusChange(change, null, TicketWebhookConfig())
+
+        // 送信者は設定の名前とロゴになる
+        assertEquals("Moripa Utils", payload["username"]!!.jsonPrimitive.content)
+        assertEquals(TicketWebhookConfig.DEFAULT_ICON_URL, payload["avatar_url"]!!.jsonPrimitive.content)
+        val embed = payload["embeds"]!!.jsonArray.single().jsonObject
+        assertEquals("Ticket Done-marked - #118", embed["title"]!!.jsonPrimitive.content)
+        // author はチケットの送信者、footer は変更した人
+        assertEquals("_NIKOMARU", embed["author"]!!.jsonObject["name"]!!.jsonPrimitive.content)
+        assertEquals("Done-marked by discord-bot", embed["footer"]!!.jsonObject["text"]!!.jsonPrimitive.content)
     }
 
     @Test
