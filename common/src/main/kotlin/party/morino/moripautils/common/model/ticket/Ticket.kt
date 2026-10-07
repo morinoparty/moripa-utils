@@ -19,6 +19,7 @@ import java.util.UUID
  * @property serverId 送信元のサーバー (config.conf の server)
  * @property playerUuid 送信したプレイヤーの UUID
  * @property playerName 送信時点のプレイヤー名 (後から名前が変わっても送信時の表示を残す)
+ * @property location 送信時にプレイヤーがいた場所
  * @property categoryId カテゴリーの id (config.conf の ticket.categories[].id)
  * @property content お問い合わせの本文
  * @property status 対応状況
@@ -29,6 +30,7 @@ data class Ticket(
     val serverId: String,
     val playerUuid: UUID,
     val playerName: String,
+    val location: TicketLocation,
     val categoryId: String,
     val content: String,
     val status: TicketStatus,

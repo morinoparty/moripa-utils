@@ -21,6 +21,7 @@ import org.koin.core.component.inject
 import party.morino.moripautils.common.database.MoripaUtilsDatabase
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketStatus
 import party.morino.moripautils.common.model.ticket.TicketSubmission
@@ -48,6 +49,10 @@ class ExposedTicketRepository :
             it[serverId] = submission.serverId
             it[playerUuid] = submission.playerUuid.toString()
             it[playerName] = submission.playerName
+            it[TicketsTable.world] = submission.location.world
+            it[TicketsTable.blockX] = submission.location.x
+            it[TicketsTable.blockY] = submission.location.y
+            it[TicketsTable.blockZ] = submission.location.z
             it[categoryId] = submission.categoryId
             it[content] = submission.content
             it[status] = TicketStatus.OPEN
@@ -58,6 +63,7 @@ class ExposedTicketRepository :
             serverId = submission.serverId,
             playerUuid = submission.playerUuid,
             playerName = submission.playerName,
+            location = submission.location,
             categoryId = submission.categoryId,
             content = submission.content,
             status = TicketStatus.OPEN,
@@ -108,6 +114,12 @@ class ExposedTicketRepository :
         serverId = this[TicketsTable.serverId],
         playerUuid = UUID.fromString(this[TicketsTable.playerUuid]),
         playerName = this[TicketsTable.playerName],
+        location = TicketLocation(
+            world = this[TicketsTable.world],
+            x = this[TicketsTable.blockX],
+            y = this[TicketsTable.blockY],
+            z = this[TicketsTable.blockZ],
+        ),
         categoryId = this[TicketsTable.categoryId],
         content = this[TicketsTable.content],
         status = this[TicketsTable.status],

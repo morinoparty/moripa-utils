@@ -24,6 +24,7 @@ import party.morino.moripautils.common.model.config.DatabaseConfig
 import party.morino.moripautils.common.model.config.SqliteConfig
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.ticket.database.ExposedTicketRepository
 import party.morino.moripautils.common.ticket.database.TicketDatabaseSchema
@@ -67,9 +68,9 @@ class ExposedTicketRepositoryTest {
         val alice = UUID.randomUUID()
         val bob = UUID.randomUUID()
 
-        val first = repository.create(TicketSubmission("main", alice, "Alice", "bug", "first"))
-        val second = repository.create(TicketSubmission("main", bob, "Bob", "other", "second"))
-        val third = repository.create(TicketSubmission("main", alice, "Alice", "bug", "third"))
+        val first = repository.create(TicketSubmission("main", alice, "Alice", LOCATION, "bug", "first"))
+        val second = repository.create(TicketSubmission("main", bob, "Bob", LOCATION, "other", "second"))
+        val third = repository.create(TicketSubmission("main", alice, "Alice", LOCATION, "bug", "third"))
 
         // 保存したものがそのまま読み出せる
         assertEquals(first, repository.findById(first.id))
@@ -84,3 +85,6 @@ class ExposedTicketRepositoryTest {
         assertTrue(Files.exists(tempDir.resolve("data/moripa-utils.db")))
     }
 }
+
+/** テストで使う送信時の場所 */
+private val LOCATION = TicketLocation("world_nether", 415, 32, -362)

@@ -23,6 +23,7 @@ import party.morino.moripautils.common.model.config.DatabaseConfig
 import party.morino.moripautils.common.model.config.SqliteConfig
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.ticket.database.ExposedTicketCommentRepository
 import party.morino.moripautils.common.ticket.database.ExposedTicketRepository
@@ -66,7 +67,7 @@ class ExposedTicketCommentRepositoryTest {
 
         // 空のデータベースでコメント側から先に使っても、参照先の tickets テーブルごと作成される
         assertEquals(emptyList<Any>(), comments.listByTicket(1, null, 10))
-        val ticket = ExposedTicketRepository().create(TicketSubmission("main", ownerUuid, "Alice", "bug", "hello"))
+        val ticket = ExposedTicketRepository().create(TicketSubmission("main", ownerUuid, "Alice", LOCATION, "bug", "hello"))
 
         val first = comments.create(
             TicketCommentSubmission(ticket.id, ownerUuid, "Alice", TicketCommentAuthorType.PLAYER, "first"),
@@ -85,3 +86,6 @@ class ExposedTicketCommentRepositoryTest {
         assertEquals(listOf(second, third), comments.listRecent(ticket.id, 2))
     }
 }
+
+/** テストで使う送信時の場所 */
+private val LOCATION = TicketLocation("world_nether", 415, 32, -362)

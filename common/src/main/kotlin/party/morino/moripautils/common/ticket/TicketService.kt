@@ -23,6 +23,7 @@ import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import java.util.UUID
@@ -53,6 +54,7 @@ class TicketService(
      *
      * @param playerUuid 送信したプレイヤーの UUID
      * @param playerName 送信したプレイヤーの名前
+     * @param location 送信時にプレイヤーがいた場所
      * @param categoryId 選択されたカテゴリーの id
      * @param content 入力された本文 (前後の空白は取り除いて保存する)
      * @return 送信結果。入力に誤りがある場合は保存も通知も行わない。通知の完了は待たない
@@ -60,6 +62,7 @@ class TicketService(
     suspend fun submit(
         playerUuid: UUID,
         playerName: String,
+        location: TicketLocation,
         categoryId: String,
         content: String,
     ): TicketSubmitResult {
@@ -75,6 +78,7 @@ class TicketService(
                 serverId = config.server,
                 playerUuid = playerUuid,
                 playerName = playerName,
+                location = location,
                 categoryId = category.id,
                 content = trimmedContent,
             ),

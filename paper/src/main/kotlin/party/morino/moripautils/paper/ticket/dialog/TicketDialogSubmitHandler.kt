@@ -17,6 +17,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.entity.Player
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import party.morino.moripautils.common.ticket.TicketService
 import party.morino.moripautils.paper.MoripaUtils
@@ -53,10 +54,12 @@ class TicketDialogSubmitHandler : MoripaUtilsKoinComponent {
         // 入力欄が欠けている (古い Dialog など) 場合は空文字として検証に任せる
         val categoryId = response.getText(TicketDialogFactory.CATEGORY_KEY).orEmpty()
         val content = response.getText(TicketDialogFactory.CONTENT_KEY).orEmpty()
+        // 運営が現地を確認できるよう、送信した瞬間の場所を記録する (コルーチンに入る前に読み取る)
+        val location = player.location.let { TicketLocation(it.world.name, it.blockX, it.blockY, it.blockZ) }
 
         plugin.launch {
             try {
-                sendResult(player, service.submit(player.uniqueId, player.name, categoryId, content))
+                sendResult(player, service.submit(player.uniqueId, player.name, location, categoryId, content))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

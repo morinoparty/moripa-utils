@@ -52,7 +52,7 @@ class TicketWebhookNotifier(
     }
 
     override suspend fun notify(ticket: Ticket, category: TicketCategory) {
-        send(DiscordWebhookPayload.create(ticket, category), "ticket #${ticket.id}")
+        send(DiscordWebhookPayload.create(ticket, category, config.webhook.avatarUrl), "ticket #${ticket.id}")
     }
 
     override suspend fun notifyComment(ticket: Ticket, comment: TicketComment) {
@@ -60,7 +60,12 @@ class TicketWebhookNotifier(
         if (comment.authorType != TicketCommentAuthorType.PLAYER) {
             return
         }
-        send(DiscordWebhookPayload.createComment(ticket, comment), "comment #${comment.id} on ticket #${ticket.id}")
+        // カテゴリーが設定から削除されている場合は id をそのまま表示する
+        val categoryName = config.categories.firstOrNull { it.id == ticket.categoryId }?.name
+        send(
+            DiscordWebhookPayload.createComment(ticket, comment, categoryName, config.webhook.avatarUrl),
+            "comment #${comment.id} on ticket #${ticket.id}",
+        )
     }
 
     /**

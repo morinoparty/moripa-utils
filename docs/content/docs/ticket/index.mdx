@@ -72,7 +72,7 @@ Web などからコメントを扱う場合は [MineAuth 連携](/docs/ticket/mi
 - `moripautils.ticket.notify` 権限を持つオンラインのプレイヤーへのチャットメッセージ
 - `ticket.webhook.url` に設定された Discord Webhook (未設定の場合は送信しません)
 
-Discord Webhook には、チケット番号・カテゴリー・プレイヤー・サーバー・内容を含む Embed が送信されます。
+Discord Webhook には、チケット番号・プレイヤー・サーバー・送信時のワールドと座標・カテゴリー・内容を含む Embed が送信されます (形式は [設定](/docs/ticket/config#送信される-embed) を参照してください)。
 内容に `@everyone` などが含まれていてもメンションは発生しません。
 
 コメントが書き込まれた場合は、書き込んだ人の立場によって通知先が変わります。
