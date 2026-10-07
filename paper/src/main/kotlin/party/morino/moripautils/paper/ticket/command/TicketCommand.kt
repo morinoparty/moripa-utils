@@ -178,11 +178,16 @@ class TicketCommand {
      * 実行元が閲覧できるチケット (本人は自分のもの、運営はすべて) だけを新しい順に返す。
      * 入力途中の文字列による絞り込みは Cloud が行う。
      *
+     * Cloud は suspend の補完メソッドに (コンテキスト, 入力) の 2 引数を要求するため、使わない入力も受け取る
+     * (引数が足りないとブートストラップ時の登録で例外になり、プラグインが読み込まれない)。
+     *
      * @param context コマンドの実行コンテキスト
+     * @param input 入力途中の文字列 (絞り込みは Cloud が行うため使わない)
      * @return 補完候補のチケット id
      */
     @Suggestions(TICKET_ID_SUGGESTIONS)
-    suspend fun suggestTicketIds(context: CommandContext<CommandSourceStack>): List<String> {
+    @Suppress("UnusedParameter")
+    suspend fun suggestTicketIds(context: CommandContext<CommandSourceStack>, input: String): List<String> {
         // コンソールなどプレイヤー以外は自分のチケットを持たない
         val player = context.sender().sender as? Player ?: return emptyList()
         // 無効化中などでサービスが無い場合は候補を出さない
