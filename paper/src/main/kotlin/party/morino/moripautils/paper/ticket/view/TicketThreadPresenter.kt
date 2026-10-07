@@ -17,6 +17,8 @@ import party.morino.moripautils.common.model.config.TicketConfig
 import party.morino.moripautils.common.model.ticket.Ticket
 import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.paper.ticket.TicketPermissions
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -47,7 +49,7 @@ class TicketThreadPresenter : MoripaUtilsKoinComponent {
         player.sendRichMessage(
             "<gray><category> / <status> / <player> / <date>",
             Placeholder.unparsed("category", categoryName),
-            Placeholder.unparsed("status", ticket.status.name),
+            Placeholder.unparsed("status", TicketStatusLabel.of(ticket)),
             Placeholder.unparsed("player", ticket.playerName),
             Placeholder.unparsed("date", format(ticket.createdAt)),
         )
@@ -63,10 +65,32 @@ class TicketThreadPresenter : MoripaUtilsKoinComponent {
             }
             comments.forEach { presentComment(player, it) }
         }
-        // 返信しやすいよう、コメント用の Dialog を開くボタンを添える (id は数値なのでそのまま埋め込める)
-        player.sendRichMessage(
-            "<click:run_command:'/ticket comment ${ticket.id}'><aqua>[コメントする]</aqua></click>",
-        )
+        // 返信や対応をしやすいよう、操作できるコマンドのボタンを添える (id は数値なのでそのまま埋め込める)
+        player.sendRichMessage(actionButtons(player, ticket).joinToString(" "))
+    }
+
+    /**
+     * チケットに対して実行できる操作のボタンを組み立てる
+     *
+     * @param player 表示先のプレイヤー
+     * @param ticket 表示するチケット
+     * @return MiniMessage 形式のボタンの一覧
+     */
+    private fun actionButtons(player: Player, ticket: Ticket): List<String> = buildList {
+        val isStaff = player.hasPermission(TicketPermissions.STAFF)
+        add("<click:run_command:'/ticket comment ${ticket.id}'><aqua>[コメントする]</aqua></click>")
+        when (ticket.status) {
+            // クローズは本人も行えるが、理由を選べるよう入力欄に途中まで入れるだけにする
+            TicketStatus.OPEN ->
+                add("<click:suggest_command:'/ticket close ${ticket.id} --reason-type '><red>[クローズ]</red></click>")
+            // 再オープンは運営だけが行える
+            TicketStatus.CLOSED -> if (isStaff) {
+                add("<click:run_command:'/ticket reopen ${ticket.id}'><gold>[再オープン]</gold></click>")
+            }
+        }
+        if (isStaff) {
+            add("<click:run_command:'/ticket teleport ${ticket.id}'><green>[テレポート]</green></click>")
+        }
     }
 
     /**

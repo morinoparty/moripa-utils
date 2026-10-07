@@ -103,7 +103,9 @@ ticket {
     enabled=true
     webhook {
         avatarUrl="https://api.mcheads.org/head/{uuid}/64"
+        iconUrl="https://raw.githubusercontent.com/morinoparty/moripa-assets/refs/heads/main/logo/logo-72.png"
         url=""
+        username="Moripa Utils"
     }
 }
 ```
@@ -158,6 +160,8 @@ Velocity では、`server` のデフォルト値が `proxy`、`observability.htt
 | `ticket.enabled` | `true` | チケット機能を有効にするかどうかです。`false` にするとチケット機能は読み込まれません。 |
 | `ticket.categories` | 5 件 (下記参照) | プレイヤーが選択できるお問い合わせのカテゴリーです。記述した順に表示されます。 |
 | `ticket.webhook.url` | `""` | 新しいチケットを通知する Webhook の URL です。空文字の場合は通知を行いません。 |
+| `ticket.webhook.username` | `"Moripa Utils"` | Webhook の送信者として表示する名前です。 |
+| `ticket.webhook.iconUrl` | morinoparty のロゴ | Webhook の送信者として表示するアイコン画像の URL です。 |
 | `ticket.webhook.avatarUrl` | `"https://api.mcheads.org/head/{uuid}/64"` | Webhook の Embed に表示するプレイヤーのアイコン画像の URL です。詳しくは [チケットの設定](/docs/ticket/config#discord-webhook) を参照してください。 |
 
 チケットは `database` ブロックで設定したデータベースの `tickets` テーブルに保存されます。

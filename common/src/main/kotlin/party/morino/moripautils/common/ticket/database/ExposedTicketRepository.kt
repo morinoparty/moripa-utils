@@ -13,14 +13,18 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.update
 import org.koin.core.component.inject
 import party.morino.moripautils.common.database.MoripaUtilsDatabase
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.common.model.ticket.TicketCloseReason
+import party.morino.moripautils.common.model.ticket.TicketListFilter
 import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketStatus
@@ -92,15 +96,36 @@ class ExposedTicketRepository :
             .map { it.toTicket() }
     }
 
-    override suspend fun listRecent(playerUuid: UUID?, offset: Long, limit: Int): List<Ticket> = dbQuery {
+    override suspend fun listRecent(
+        playerUuid: UUID?,
+        filter: TicketListFilter,
+        offset: Long,
+        limit: Int,
+    ): List<Ticket> = dbQuery {
         val statement = TicketsTable.selectAll()
         // 送信者が指定されたときだけ絞り込む (運営はすべてのチケットを対象にする)
         playerUuid?.let { uuid -> statement.andWhere { TicketsTable.playerUuid eq uuid.toString() } }
+        filter.status?.let { status -> statement.andWhere { TicketsTable.status eq status } }
+        // プレイヤー名は入力の大文字小文字が揺れやすいため、小文字にそろえて比較する
+        filter.playerName?.let { name -> statement.andWhere { TicketsTable.playerName.lowerCase() eq name.lowercase() } }
         statement
             .orderBy(TicketsTable.id to SortOrder.DESC)
             .limit(limit)
             .offset(offset)
             .map { it.toTicket() }
+    }
+
+    override suspend fun updateStatus(id: Long, status: TicketStatus, closeReason: TicketCloseReason?): Ticket? = dbQuery {
+        val updated = TicketsTable.update({ TicketsTable.id eq id }) {
+            it[TicketsTable.status] = status
+            it[TicketsTable.closeReason] = closeReason
+        }
+        // 更新した行が無ければ存在しないチケット
+        if (updated == 0) {
+            null
+        } else {
+            TicketsTable.selectAll().where { TicketsTable.id eq id }.single().toTicket()
+        }
     }
 
     /**
@@ -135,5 +160,6 @@ class ExposedTicketRepository :
         content = this[TicketsTable.content],
         status = this[TicketsTable.status],
         createdAt = this[TicketsTable.createdAt],
+        closeReason = this[TicketsTable.closeReason],
     )
 }

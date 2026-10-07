@@ -19,6 +19,7 @@ import party.morino.moripautils.common.model.config.TicketConfig
 import party.morino.moripautils.common.model.ticket.Ticket
 import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.common.model.ticket.TicketStatusChange
 import party.morino.moripautils.common.ticket.TicketNotifier
 import java.net.URI
 import java.net.http.HttpClient
@@ -29,7 +30,7 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 /**
- * 新しいチケットと、プレイヤーからのコメントを Discord Webhook へ送る通知先
+ * 新しいチケット、プレイヤーからのコメント、状態の変更 (クローズ / 再オープン) を Discord Webhook へ送る通知先
  *
  * config.conf の ticket.webhook.url が空の場合は何もしない。
  * 運営のコメントは運営自身が書いたものなので送らない。
@@ -52,7 +53,7 @@ class TicketWebhookNotifier(
     }
 
     override suspend fun notify(ticket: Ticket, category: TicketCategory) {
-        send(DiscordWebhookPayload.create(ticket, category, config.webhook.avatarUrl), "ticket #${ticket.id}")
+        send(DiscordWebhookPayload.create(ticket, category, config.webhook), "ticket #${ticket.id}")
     }
 
     override suspend fun notifyComment(ticket: Ticket, comment: TicketComment) {
@@ -60,13 +61,27 @@ class TicketWebhookNotifier(
         if (comment.authorType != TicketCommentAuthorType.PLAYER) {
             return
         }
-        // カテゴリーが設定から削除されている場合は id をそのまま表示する
-        val categoryName = config.categories.firstOrNull { it.id == ticket.categoryId }?.name
         send(
-            DiscordWebhookPayload.createComment(ticket, comment, categoryName, config.webhook.avatarUrl),
+            DiscordWebhookPayload.createComment(ticket, comment, categoryNameOf(ticket), config.webhook),
             "comment #${comment.id} on ticket #${ticket.id}",
         )
     }
+
+    override suspend fun notifyStatusChange(change: TicketStatusChange) {
+        // 運営チャンネルで対応状況を追えるよう、本人と運営のどちらが変更しても送る
+        send(
+            DiscordWebhookPayload.createStatusChange(change, categoryNameOf(change.ticket), config.webhook),
+            "status change of ticket #${change.ticket.id}",
+        )
+    }
+
+    /**
+     * チケットのカテゴリーの表示名を引き当てる
+     *
+     * @param ticket 対象のチケット
+     * @return 表示名。カテゴリーが設定から削除されている場合は null (呼び出し側で id をそのまま表示する)
+     */
+    private fun categoryNameOf(ticket: Ticket): String? = config.categories.firstOrNull { it.id == ticket.categoryId }?.name
 
     /**
      * Webhook に本文を送る

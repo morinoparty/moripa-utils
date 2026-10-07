@@ -12,9 +12,10 @@ package party.morino.moripautils.common.ticket
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.ticket.Ticket
 import party.morino.moripautils.common.model.ticket.TicketComment
+import party.morino.moripautils.common.model.ticket.TicketStatusChange
 
 /**
- * 新しいチケットやコメントを知らせる通知先 (Observer)
+ * 新しいチケットやコメント、状態の変更を知らせる通知先 (Observer)
  *
  * Koin に [TicketNotifier] として登録した実装すべてに、[TicketService] が送信や書き込みのたびに通知する。
  * Discord Webhook やゲーム内のスタッフ通知など、通知先を増やすときはこのインターフェースを実装して登録する。
@@ -40,4 +41,14 @@ interface TicketNotifier {
      * @param comment 保存されたコメント
      */
     suspend fun notifyComment(ticket: Ticket, comment: TicketComment)
+
+    /**
+     * チケットがクローズ / 再オープンされたことを通知する
+     *
+     * 誰に知らせるかは [TicketStatusChange.actor] と送信者を見て実装ごとに決める。
+     * 通知の失敗で状態の変更そのものが失敗しないよう、実装は例外を投げずにログへ残すこと。
+     *
+     * @param change 状態の変更 (変更後のチケットと変更した人)
+     */
+    suspend fun notifyStatusChange(change: TicketStatusChange)
 }

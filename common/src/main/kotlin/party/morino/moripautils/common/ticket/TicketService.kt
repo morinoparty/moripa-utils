@@ -19,13 +19,19 @@ import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.ticket.Ticket
 import party.morino.moripautils.common.model.ticket.TicketActor
+import party.morino.moripautils.common.model.ticket.TicketCloseReason
 import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
+import party.morino.moripautils.common.model.ticket.TicketListFilter
 import party.morino.moripautils.common.model.ticket.TicketLocation
+import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.common.model.ticket.TicketStatusChange
+import party.morino.moripautils.common.model.ticket.TicketStatusChangeResult
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
+import java.time.Instant
 import java.util.UUID
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -140,17 +146,86 @@ class TicketService(
      * 操作する人が閲覧できるチケットを新しい順に取得する
      *
      * 本人は自分のチケットを、運営はすべてのチケットを閲覧できる。
+     * 運営以外はプレイヤー名による絞り込みを指定しても無視し、常に自分のチケットだけを返す。
      *
      * @param actor 閲覧する人
+     * @param filter 状態やプレイヤー名による絞り込み条件
      * @param offset 先頭から読み飛ばす件数
      * @param limit 取得する最大件数
      * @return 最大 [limit] 件のチケット (新しい順)。UUID を持たない運営以外の操作者には空のリストを返す
      */
-    suspend fun listAccessibleTickets(actor: TicketActor, offset: Long, limit: Int): List<Ticket> = when {
-        actor.isStaff -> repository.listRecent(null, offset, limit)
+    suspend fun listAccessibleTickets(
+        actor: TicketActor,
+        filter: TicketListFilter,
+        offset: Long,
+        limit: Int,
+    ): List<Ticket> = when {
+        actor.isStaff -> repository.listRecent(null, filter, offset, limit)
         // UUID が無いと自分のチケットを特定できないため、何も返さない
         actor.uuid == null -> emptyList()
-        else -> repository.listRecent(actor.uuid, offset, limit)
+        // 他人の名前で絞り込んでも他人のチケットは見せない
+        else -> repository.listRecent(actor.uuid, filter.copy(playerName = null), offset, limit)
+    }
+
+    /**
+     * チケットをクローズする
+     *
+     * 本人は自分のチケットを、運営はすべてのチケットをクローズできる。
+     *
+     * @param actor クローズする人
+     * @param ticketId チケットの id
+     * @param reason クローズする理由
+     * @return 変更結果。失敗した場合は保存も通知も行わない。通知の完了は待たない
+     */
+    suspend fun closeTicket(actor: TicketActor, ticketId: Long, reason: TicketCloseReason): TicketStatusChangeResult {
+        // 存在しないチケットと他人のチケットを区別させない
+        val ticket = findAccessibleTicket(actor, ticketId) ?: return TicketStatusChangeResult.TicketNotFound
+        if (ticket.status == TicketStatus.CLOSED) {
+            return TicketStatusChangeResult.AlreadyClosed
+        }
+        return changeStatus(actor, ticket, TicketStatus.CLOSED, reason)
+    }
+
+    /**
+     * クローズされたチケットをオープンに戻す
+     *
+     * 対応の判断をやり直す操作のため、運営だけが行える (本人は閲覧はできても再オープンはできない)。
+     *
+     * @param actor 再オープンする人
+     * @param ticketId チケットの id
+     * @return 変更結果。失敗した場合は保存も通知も行わない。通知の完了は待たない
+     */
+    suspend fun reopenTicket(actor: TicketActor, ticketId: Long): TicketStatusChangeResult {
+        val ticket = findAccessibleTicket(actor, ticketId) ?: return TicketStatusChangeResult.TicketNotFound
+        if (!actor.isStaff) {
+            return TicketStatusChangeResult.NotPermitted
+        }
+        if (ticket.status == TicketStatus.OPEN) {
+            return TicketStatusChangeResult.AlreadyOpen
+        }
+        return changeStatus(actor, ticket, TicketStatus.OPEN, null)
+    }
+
+    /**
+     * チケットの状態を保存して通知する
+     *
+     * @param actor 変更する人
+     * @param ticket 変更前のチケット (権限と現在の状態は確認済みであること)
+     * @param status 変更後の状態
+     * @param closeReason クローズした理由 (オープンに戻す場合は null)
+     * @return 変更結果
+     */
+    private suspend fun changeStatus(
+        actor: TicketActor,
+        ticket: Ticket,
+        status: TicketStatus,
+        closeReason: TicketCloseReason?,
+    ): TicketStatusChangeResult {
+        // 確認してから更新するまでの間に削除された場合は見つからなかったものとして扱う
+        val updated = repository.updateStatus(ticket.id, status, closeReason) ?: return TicketStatusChangeResult.TicketNotFound
+        val change = TicketStatusChange(updated, actor, Instant.now())
+        launchNotifications("status change of ticket #${ticket.id}") { it.notifyStatusChange(change) }
+        return TicketStatusChangeResult.Success(change)
     }
 
     /**

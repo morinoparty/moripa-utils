@@ -24,6 +24,7 @@ import party.morino.moripautils.common.model.ticket.Ticket
  * @property categoryName カテゴリーの表示名 (設定からカテゴリーが削除されている場合は null)
  * @property content 本文
  * @property status 対応状況 (OPEN / CLOSED)
+ * @property closeReason クローズした理由 (done / not-planned / duplicate、オープン中は null)
  * @property createdAt 送信日時 (ISO-8601 形式の UTC)
  */
 @Serializable
@@ -38,6 +39,7 @@ data class TicketResponse(
     val content: String,
     val status: String,
     val createdAt: String,
+    val closeReason: String?,
 ) {
     companion object {
         /**
@@ -58,6 +60,7 @@ data class TicketResponse(
             content = ticket.content,
             status = ticket.status.name,
             createdAt = ticket.createdAt.toString(),
+            closeReason = ticket.closeReason?.id,
         )
     }
 }

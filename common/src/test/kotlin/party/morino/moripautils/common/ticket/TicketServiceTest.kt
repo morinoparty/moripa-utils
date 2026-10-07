@@ -27,13 +27,17 @@ import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.ticket.Ticket
 import party.morino.moripautils.common.model.ticket.TicketActor
+import party.morino.moripautils.common.model.ticket.TicketCloseReason
 import party.morino.moripautils.common.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
+import party.morino.moripautils.common.model.ticket.TicketListFilter
+import party.morino.moripautils.common.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
 import party.morino.moripautils.common.model.ticket.TicketStatus
-import party.morino.moripautils.common.model.ticket.TicketLocation
+import party.morino.moripautils.common.model.ticket.TicketStatusChange
+import party.morino.moripautils.common.model.ticket.TicketStatusChangeResult
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import java.time.Instant
@@ -156,11 +160,41 @@ class TicketServiceTest {
         val player = TicketActor(nikomaruUuid, "_NIKOMARU", isStaff = false)
         val staff = TicketActor(null, "discord-bot", isStaff = true)
 
-        assertEquals(listOf(mine), service.listAccessibleTickets(player, 0, 10))
+        assertEquals(listOf(mine), service.listAccessibleTickets(player, TicketListFilter(), 0, 10))
+        // 他人の名前で絞り込んでも、運営以外には自分のチケットしか見えない
+        assertEquals(listOf(mine), service.listAccessibleTickets(player, TicketListFilter(playerName = "Steve"), 0, 10))
         // 運営はすべてのチケットを新しい順に閲覧できる
-        assertEquals(listOf(others, mine), service.listAccessibleTickets(staff, 0, 10))
+        assertEquals(listOf(others, mine), service.listAccessibleTickets(staff, TicketListFilter(), 0, 10))
         // UUID を持たない運営以外の操作者は何も閲覧できない
-        assertEquals(emptyList<Ticket>(), service.listAccessibleTickets(TicketActor(null, "bot", isStaff = false), 0, 10))
+        val anonymous = TicketActor(null, "bot", isStaff = false)
+        assertEquals(emptyList<Ticket>(), service.listAccessibleTickets(anonymous, TicketListFilter(), 0, 10))
+    }
+
+    @Test
+    @DisplayName("Lets owners close but only staff reopen")
+    fun closesAndReopens() = runBlocking {
+        // 実在するプレイヤー (_NIKOMARU) の UUID を使う
+        val nikomaruUuid = UUID.fromString("f8b761ec-4a54-48eb-a040-c5604042bcc9")
+        val ticket = repository.create(TicketSubmission("test", nikomaruUuid, "_NIKOMARU", LOCATION, "bug", "hello"))
+        val owner = TicketActor(nikomaruUuid, "_NIKOMARU", isStaff = false)
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+
+        // 他人のチケットは存在しないものとして扱う
+        val stranger = TicketActor(playerUuid, "Steve", isStaff = false)
+        assertEquals(TicketStatusChangeResult.TicketNotFound, service.closeTicket(stranger, ticket.id, TicketCloseReason.DONE))
+
+        val closed = service.closeTicket(owner, ticket.id, TicketCloseReason.NOT_PLANNED)
+        val success = assertInstanceOf(TicketStatusChangeResult.Success::class.java, closed)
+        assertEquals(TicketCloseReason.NOT_PLANNED, success.change.ticket.closeReason)
+        assertEquals(TicketStatusChangeResult.AlreadyClosed, service.closeTicket(owner, ticket.id, TicketCloseReason.DONE))
+        // 本人は再オープンできず、運営だけができる
+        assertEquals(TicketStatusChangeResult.NotPermitted, service.reopenTicket(owner, ticket.id))
+        assertInstanceOf(TicketStatusChangeResult.Success::class.java, service.reopenTicket(staff, ticket.id))
+        assertEquals(TicketStatusChangeResult.AlreadyOpen, service.reopenTicket(staff, ticket.id))
+
+        // クローズと再オープンの 2 回だけ通知される
+        notificationJob.children.toList().joinAll()
+        assertEquals(listOf(TicketStatus.CLOSED, TicketStatus.OPEN), notifier.statusChanges.map { it.ticket.status })
     }
 
     /** create の呼び出しを記録し、連番の id を振って返すリポジトリ */
@@ -189,11 +223,27 @@ class TicketServiceTest {
 
         override suspend fun search(query: TicketSearchQuery): List<Ticket> = emptyList()
 
-        override suspend fun listRecent(playerUuid: UUID?, offset: Long, limit: Int): List<Ticket> = tickets
+        override suspend fun listRecent(
+            playerUuid: UUID?,
+            filter: TicketListFilter,
+            offset: Long,
+            limit: Int,
+        ): List<Ticket> = tickets
             .filter { playerUuid == null || it.playerUuid == playerUuid }
+            .filter { filter.status == null || it.status == filter.status }
+            .filter { filter.playerName == null || it.playerName.equals(filter.playerName, ignoreCase = true) }
             .sortedByDescending { it.id }
             .drop(offset.toInt())
             .take(limit)
+
+        override suspend fun updateStatus(id: Long, status: TicketStatus, closeReason: TicketCloseReason?): Ticket? {
+            val index = tickets.indexOfFirst { it.id == id }
+            if (index < 0) {
+                return null
+            }
+            tickets[index] = tickets[index].copy(status = status, closeReason = closeReason)
+            return tickets[index]
+        }
     }
 
     /** create の呼び出しを記録し、連番の id を振って返すコメントのリポジトリ */
@@ -222,6 +272,7 @@ class TicketServiceTest {
     private class RecordingNotifier : TicketNotifier {
         val notified = mutableListOf<Pair<Ticket, TicketCategory>>()
         val commented = mutableListOf<TicketComment>()
+        val statusChanges = mutableListOf<TicketStatusChange>()
 
         override suspend fun notify(ticket: Ticket, category: TicketCategory) {
             notified += ticket to category
@@ -229,6 +280,10 @@ class TicketServiceTest {
 
         override suspend fun notifyComment(ticket: Ticket, comment: TicketComment) {
             commented += comment
+        }
+
+        override suspend fun notifyStatusChange(change: TicketStatusChange) {
+            statusChanges += change
         }
     }
 }

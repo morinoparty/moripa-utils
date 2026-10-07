@@ -52,13 +52,53 @@ Web などからコメントを扱う場合は [MineAuth 連携](/docs/ticket/mi
 
 | コマンド | 権限 | 説明 |
 |---------|------|------|
-| `/ticket` | `moripautils.ticket.use` | お問い合わせ用の Dialog を開きます。プレイヤーのみ実行できます。 |
+| `/ticket` / `/ticket create` | `moripautils.ticket.use` | お問い合わせ用の Dialog を開きます。プレイヤーのみ実行できます。 |
 | `/ticket view <番号>` | `moripautils.ticket.use` | チケットと最新 10 件のコメントをチャットに表示します。本人のチケットのみ表示でき、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケットを表示できます。 |
 | `/ticket comment <番号>` | `moripautils.ticket.use` | コメント入力用の Dialog を開きます。書き込める範囲は `/ticket view` と同じです。 |
-| `/ticket list [ページ]` | `moripautils.ticket.use` | 閲覧できるチケットを新しい順に 1 ページ 10 件ずつ表示します。各行をクリックすると `/ticket view` で詳細が開きます。ページ番号を省略した場合は 1 ページ目を表示します。 |
+| `/ticket list [ページ] [--status <状態>] [--player <名前>]` | `moripautils.ticket.use` | 閲覧できるチケットを新しい順に 1 ページ 10 件ずつ表示します。各行をクリックすると `/ticket view` で詳細が開きます。ページ番号を省略した場合は 1 ページ目を表示します。絞り込みについては [一覧の絞り込み](#一覧の絞り込み) を参照してください。 |
+| `/ticket close <番号> [--reason-type <理由>]` | `moripautils.ticket.use` | チケットをクローズします。本人のチケットのみクローズでき、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケットをクローズできます。理由については [クローズと再オープン](#クローズと再オープン) を参照してください。 |
+| `/ticket reopen <番号>` | `moripautils.ticket.staff` | クローズされたチケットをオープンに戻します。 |
+| `/ticket teleport <番号>` (`/ticket tp`) | `moripautils.ticket.staff` | チケットが送信された場所へテレポートします。このサーバーで送信されたチケットのみ対象です。 |
 
-`/ticket view` と `/ticket comment` の `<番号>` は Tab キーで補完できます。
+`<番号>` は Tab キーで補完できます。
 候補には、実行したプレイヤーが閲覧できるチケット (本人のチケット、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケット) の番号だけが、新しい順に最大 30 件表示されます。
+`/ticket close` ではオープン中のチケット、`/ticket reopen` ではクローズされたチケットだけが候補になります。
+
+`/ticket view` で表示されるチケットには、`[コメントする]` / `[クローズ]` / `[再オープン]` / `[テレポート]` のうち、実行できる操作のボタンが付きます。
+
+### 一覧の絞り込み
+
+`/ticket list` では、次のフラグで表示するチケットを絞り込めます。
+ページ移動のボタンには、指定した絞り込みが引き継がれます。
+
+| フラグ | 説明 |
+|-------|------|
+| `--status <open \| closed>` | 対応状況で絞り込みます。 |
+| `--player <名前>` | 送信時点のプレイヤー名で絞り込みます (大文字と小文字は区別しません)。`moripautils.ticket.staff` 権限を持つ場合のみ指定できます。 |
+
+```text
+/ticket list --status open
+/ticket list 2 --status closed --player _NIKOMARU
+```
+
+### クローズと再オープン
+
+`/ticket close` では、`--reason-type` でクローズする理由を指定できます。
+省略した場合は `done` になります。
+
+| 理由 | 表示 | 説明 |
+|------|------|------|
+| `done` | 対応完了 | 対応が完了しました。 |
+| `not-planned` | 対応しない | 対応しないことにしました。 |
+| `duplicate` | 重複 | 他のチケットと重複しています。 |
+
+```text
+/ticket close 12 --reason-type not-planned
+```
+
+クローズされたチケットは、`moripautils.ticket.staff` 権限を持つプレイヤーが `/ticket reopen` でオープンに戻せます。
+送信したプレイヤー本人は、自分のチケットをクローズできますが、再オープンはできません。
+クローズされたチケットにも、引き続きコメントを書き込めます。
 
 ## 権限
 
@@ -66,7 +106,7 @@ Web などからコメントを扱う場合は [MineAuth 連携](/docs/ticket/mi
 |------|-----------|------|
 | `moripautils.ticket.use` | 全員 | `/ticket` でお問い合わせを送信できます。 |
 | `moripautils.ticket.notify` | OP | 新しいチケットの送信や、プレイヤーからのコメントをチャットで通知されます。 |
-| `moripautils.ticket.staff` | OP | すべてのチケットを閲覧し、運営としてコメントを書き込めます (ゲーム内 / MineAuth の HTTP API)。 |
+| `moripautils.ticket.staff` | OP | すべてのチケットを閲覧し、運営としてコメントを書き込めます (ゲーム内 / MineAuth の HTTP API)。すべてのチケットのクローズと再オープン、送信場所へのテレポート、`/ticket list --player` も行えます。 |
 
 ## 通知
 
@@ -85,6 +125,13 @@ Discord Webhook には、チケット番号・プレイヤー・サーバー・�
 |-------------|--------|
 | 送信したプレイヤー本人 (`PLAYER`) | `moripautils.ticket.notify` 権限を持つオンラインのプレイヤー (書き込んだ本人を除く) と Discord Webhook |
 | 運営 (`STAFF`) | チケットを送信したプレイヤー (オンラインの場合のみ) |
+
+チケットがクローズ / 再オープンされた場合は、変更した人によって通知先が変わります。
+
+| 変更した人 | 通知先 |
+|-----------|--------|
+| 送信したプレイヤー本人 | `moripautils.ticket.notify` 権限を持つオンラインのプレイヤー (変更した本人を除く) と Discord Webhook |
+| 運営 | チケットを送信したプレイヤー (オンラインの場合のみ) と Discord Webhook |
 
 チャットの通知には、`/ticket view` を実行する `[表示]` ボタンが付きます。
 データベースを複数のサーバーで共有している場合でも、ゲーム内の通知はコメントが書き込まれたサーバーにいるプレイヤーにのみ届きます。
