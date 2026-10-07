@@ -80,6 +80,9 @@ class ExposedTicketRepositoryTest {
         // カテゴリー / 送信者で絞り込める
         assertEquals(listOf(first, third), repository.search(TicketSearchQuery(categoryId = "bug", limit = 10)))
         assertEquals(listOf(second), repository.search(TicketSearchQuery(playerUuid = bob, limit = 10)))
+        // 新しい順に、送信者で絞り込みつつページングできる
+        assertEquals(listOf(third, second, first), repository.listRecent(null, 0, 10))
+        assertEquals(listOf(first), repository.listRecent(alice, 1, 10))
         // 設定したファイルに tickets テーブルが作られている
         assertTrue(Files.exists(tempDir.resolve("data/moripa-utils.db")))
     }

@@ -86,6 +86,17 @@ class ExposedTicketRepository :
             .map { it.toTicket() }
     }
 
+    override suspend fun listRecent(playerUuid: UUID?, offset: Long, limit: Int): List<Ticket> = dbQuery {
+        val statement = TicketsTable.selectAll()
+        // 送信者が指定されたときだけ絞り込む (運営はすべてのチケットを対象にする)
+        playerUuid?.let { uuid -> statement.andWhere { TicketsTable.playerUuid eq uuid.toString() } }
+        statement
+            .orderBy(TicketsTable.id to SortOrder.DESC)
+            .limit(limit)
+            .offset(offset)
+            .map { it.toTicket() }
+    }
+
     /**
      * テーブルを用意してからトランザクションを実行する
      *
