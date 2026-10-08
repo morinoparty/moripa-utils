@@ -1,0 +1,17 @@
+$schema: https://raw.githubusercontent.com/morinoparty/fukurou/v2/schema/scenario.v2.json
+name: /ticket help shows a short guide and the docs link
+tags: [ticket, help]
+steps:
+  # 参加直後はクライアントがまだ入力を受け付けず、打った文字がキー操作として扱われることがある
+  - { action: wait, seconds: 10 }
+  - { on: Alice, action: chat, text: "/ticket help" }
+  - { on: server, action: wait_for_log, pattern: "Alice issued server command: /ticket help", timeout: 10 }
+  # 案内の 1 行目がチャットに届いたことを確かめる
+  - { on: Alice, action: wait_for_log, pattern: "\\[CHAT\\] \\[Ticket\\] 運営へのお問い合わせ機能です", timeout: 10 }
+  - { on: server, action: assert_no_log, pattern: "Exception executing command|Unhandled exception|at party\\.morino\\.moripautils\\." }
+  - { on: Alice, action: assert_no_log, pattern: "\\[CHAT\\] .*(Unknown or incomplete command|permission)" }
+  # チャット欄を開いて、時間が経っても案内の全行とリンクが見える状態でスクリーンショットを撮る
+  - { on: Alice, action: press_key, key: t }
+  - { action: wait, seconds: 1 }
+  - { on: Alice, action: screenshot, name: ticket-help }
+  - { on: Alice, action: press_key, key: Escape }
