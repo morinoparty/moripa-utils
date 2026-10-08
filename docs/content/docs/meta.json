@@ -1,15 +1,3 @@
 {
-    "pages": [
-        "---はじめに---",
-        "index",
-        "config",
-        "database",
-        "---機能---",
-        "observability",
-        "ticket",
-        "---その他---",
-        "mpm-repository",
-        "---リポジトリ---",
-        "...repository"
-    ]
+    "pages": ["player", "(admin)"]
 }

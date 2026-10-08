@@ -1,0 +1,19 @@
+{
+    "title": "開発者・管理者向け",
+    "root": true,
+    "icon": "Wrench",
+    "description": "導入・設定・運用と開発のためのドキュメント",
+    "pages": [
+        "---はじめに---",
+        "index",
+        "config",
+        "database",
+        "---機能---",
+        "observability",
+        "ticket",
+        "---その他---",
+        "mpm-repository",
+        "---リポジトリ---",
+        "...repository"
+    ]
+}

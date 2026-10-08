@@ -29,9 +29,9 @@ import java.util.logging.Level
 /**
  * チケットの動きをオンラインのプレイヤーへチャットで知らせる通知先
  *
- * - 新しいチケット / プレイヤーからのコメント: 通知権限 (moripautils.ticket.notify) を持つプレイヤーへ
+ * - 新しいチケット / プレイヤーからのコメント: 運営 (moripautils.ticket.staff) へ
  * - 運営からのコメント: チケットを送信した本人へ (このサーバーにオンラインの場合のみ)
- * - 本人によるクローズ: 通知権限を持つプレイヤーへ
+ * - 本人によるクローズ: 運営へ
  * - 運営によるクローズ / 再オープン: チケットを送信した本人へ (このサーバーにオンラインの場合のみ)
  */
 class InGameTicketNotifier :
@@ -45,7 +45,7 @@ class InGameTicketNotifier :
             // オンラインプレイヤーの一覧や権限はメインスレッドで読む
             withContext(plugin.minecraftDispatcher) {
                 server.onlinePlayers
-                    .filter { it.hasPermission(TicketPermissions.NOTIFY) }
+                    .filter { it.hasPermission(TicketPermissions.STAFF) }
                     .forEach { staff ->
                         // プレイヤー名やカテゴリー名に MiniMessage のタグが含まれていても解釈させない
                         staff.sendRichMessage(
@@ -105,7 +105,7 @@ class InGameTicketNotifier :
     }
 
     /**
-     * 本人による状態の変更を、通知権限を持つプレイヤーへ知らせる (メインスレッドで呼ぶこと)
+     * 本人による状態の変更を、運営へ知らせる (メインスレッドで呼ぶこと)
      *
      * @param change 状態の変更
      */
@@ -113,7 +113,7 @@ class InGameTicketNotifier :
         val ticket = change.ticket
         server.onlinePlayers
             // 変更した本人には知らせない
-            .filter { it.hasPermission(TicketPermissions.NOTIFY) && it.uniqueId != change.actor.uuid }
+            .filter { it.hasPermission(TicketPermissions.STAFF) && it.uniqueId != change.actor.uuid }
             .forEach { staff ->
                 staff.sendRichMessage(
                     "<gold>[Ticket]</gold> <player> さんがお問い合わせ #<id> を「<status>」にしました " +
@@ -144,7 +144,7 @@ class InGameTicketNotifier :
     }
 
     /**
-     * プレイヤーからのコメントを、通知権限を持つプレイヤーへ知らせる (メインスレッドで呼ぶこと)
+     * プレイヤーからのコメントを、運営へ知らせる (メインスレッドで呼ぶこと)
      *
      * @param ticket コメント先のチケット
      * @param comment 書き込まれたコメント
@@ -152,7 +152,7 @@ class InGameTicketNotifier :
     private fun notifyStaffOfComment(ticket: Ticket, comment: TicketComment) {
         server.onlinePlayers
             // 書き込んだ本人には知らせない
-            .filter { it.hasPermission(TicketPermissions.NOTIFY) && it.uniqueId != comment.authorUuid }
+            .filter { it.hasPermission(TicketPermissions.STAFF) && it.uniqueId != comment.authorUuid }
             .forEach { staff ->
                 staff.sendRichMessage(
                     "<gold>[Ticket]</gold> <player> さんがお問い合わせ #<id> にコメントしました " +

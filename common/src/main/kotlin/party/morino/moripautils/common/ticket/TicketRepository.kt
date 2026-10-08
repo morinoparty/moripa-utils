@@ -74,4 +74,12 @@ interface TicketRepository {
      * @return 変更後のチケット、存在しない場合は null
      */
     suspend fun updateStatus(id: Long, status: TicketStatus, closeReason: TicketCloseReason?): Ticket?
+
+    /**
+     * 指定した状態のチケットの件数を数える (運営の参加時に未対応の件数を表示するときに使う)
+     *
+     * @param status 数える状態
+     * @return 件数
+     */
+    suspend fun countByStatus(status: TicketStatus): Long
 }

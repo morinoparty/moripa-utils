@@ -128,6 +128,10 @@ class ExposedTicketRepository :
         }
     }
 
+    override suspend fun countByStatus(status: TicketStatus): Long = dbQuery {
+        TicketsTable.selectAll().where { TicketsTable.status eq status }.count()
+    }
+
     /**
      * テーブルを用意してからトランザクションを実行する
      *

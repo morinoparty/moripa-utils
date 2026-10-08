@@ -47,6 +47,7 @@ import party.morino.moripautils.paper.observability.metrics.ServerInfoCollector
 import party.morino.moripautils.paper.observability.metrics.TickDurationListener
 import party.morino.moripautils.paper.observability.metrics.TickMetricsCollector
 import party.morino.moripautils.paper.observability.metrics.WorldMetricsCollector
+import party.morino.moripautils.paper.ticket.TicketJoinListener
 import party.morino.moripautils.paper.ticket.di.PaperTicketModule
 import party.morino.moripautils.paper.ticket.mineauth.TicketMineAuthIntegration
 import java.io.IOException
@@ -57,7 +58,7 @@ import java.io.IOException
  * 有効化時に設定を読み込み、このプラグイン専用の Koin コンテナを起動して各機能を初期化する。
  * observability 機能が有効な場合は、メトリクスコレクターを登録して Prometheus 用の HTTP サーバーと
  * メインスレッドのサンプラーを起動する。
- * ticket 機能が有効な場合は、/ticket が使うサービスを読み込み、MineAuth があれば HTTP API を登録する。
+ * ticket 機能が有効な場合は、/ticket が使うサービスと参加時の案内を読み込み、MineAuth があれば HTTP API を登録する。
  * /mu reload ([reload]) では、各機能を停止してから新しい設定で Koin コンテナごと作り直す。
  *
  * @property commandManager ブートストラップ段階で生成した Cloud のコマンドマネージャー。
@@ -249,6 +250,10 @@ open class MoripaUtils(
                 PaperTicketModule.create(),
             ),
         )
+        // 運営の参加時に未対応のチケットの件数を知らせる (再読み込み時に解除できるよう覚えておく)
+        val joinListener = TicketJoinListener()
+        server.pluginManager.registerEvents(joinListener, this)
+        registeredListeners.add(joinListener)
         // MineAuth は任意依存。API クラスに触れる前に Bukkit の API だけで存在を確認する
         if (server.pluginManager.getPlugin(MINEAUTH_PLUGIN_NAME) != null) {
             mineAuthRegistration = registerMineAuthSafely()

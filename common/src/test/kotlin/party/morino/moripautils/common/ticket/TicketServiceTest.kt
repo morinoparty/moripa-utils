@@ -244,6 +244,8 @@ class TicketServiceTest {
             tickets[index] = tickets[index].copy(status = status, closeReason = closeReason)
             return tickets[index]
         }
+
+        override suspend fun countByStatus(status: TicketStatus): Long = tickets.count { it.status == status }.toLong()
     }
 
     /** create の呼び出しを記録し、連番の id を振って返すコメントのリポジトリ */

@@ -93,6 +93,9 @@ class ExposedTicketRepositoryTest {
         val closed = repository.updateStatus(second.id, TicketStatus.CLOSED, TicketCloseReason.NOT_PLANNED)
         assertEquals(second.copy(status = TicketStatus.CLOSED, closeReason = TicketCloseReason.NOT_PLANNED), closed)
         assertEquals(listOf(closed), repository.listRecent(null, TicketListFilter(status = TicketStatus.CLOSED), 0, 10))
+        // 状態ごとの件数を数えられる
+        assertEquals(2L, repository.countByStatus(TicketStatus.OPEN))
+        assertEquals(1L, repository.countByStatus(TicketStatus.CLOSED))
         assertEquals(second, repository.updateStatus(second.id, TicketStatus.OPEN, null))
         // 存在しないチケットは更新できない
         assertEquals(null, repository.updateStatus(999, TicketStatus.CLOSED, TicketCloseReason.DONE))
