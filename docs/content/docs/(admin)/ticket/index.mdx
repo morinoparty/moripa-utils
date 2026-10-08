@@ -57,6 +57,7 @@ Web などからコメントを扱う場合は [MineAuth 連携](/docs/ticket/mi
 | `/ticket comment <番号>` | `moripautils.ticket.use` | コメント入力用の Dialog を開きます。書き込める範囲は `/ticket view` と同じです。 |
 | `/ticket list [ページ] [--status <状態>] [--player <名前>]` | `moripautils.ticket.use` | 閲覧できるチケットを新しい順に 1 ページ 10 件ずつ表示します。各行をクリックすると `/ticket view` で詳細が開きます。ページ番号を省略した場合は 1 ページ目を表示します。絞り込みについては [一覧の絞り込み](#一覧の絞り込み) を参照してください。 |
 | `/ticket close <番号> [--reason-type <理由>]` | `moripautils.ticket.use` | チケットをクローズします。本人のチケットのみクローズでき、`moripautils.ticket.staff` 権限を持つ場合はすべてのチケットをクローズできます。理由については [クローズと再オープン](#クローズと再オープン) を参照してください。 |
+| `/ticket help` | `moripautils.ticket.use` | 主なコマンドの簡単な説明と、[プレイヤー向けの使い方](/docs/player/ticket) へのリンク (`https://utils.plugin.morino.party/docs/player/ticket`) を表示します。コンソールからも実行できます。 |
 | `/ticket reopen <番号>` | `moripautils.ticket.staff` | クローズされたチケットをオープンに戻します。 |
 | `/ticket teleport <番号>` (`/ticket tp`) | `moripautils.ticket.staff` | チケットが送信された場所へテレポートします。このサーバーで送信されたチケットのみ対象です。 |
 

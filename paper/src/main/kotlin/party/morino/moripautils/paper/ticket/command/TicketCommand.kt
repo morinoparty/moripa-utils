@@ -41,7 +41,7 @@ import party.morino.moripautils.paper.ticket.view.TicketStatusLabel
 import party.morino.moripautils.paper.ticket.view.TicketThreadPresenter
 
 /**
- * /ticket コマンド (お問い合わせの送信 / 閲覧 / コメント / 一覧 / クローズ / 再オープン / テレポート)
+ * /ticket コマンド (お問い合わせの送信 / 閲覧 / コメント / 一覧 / クローズ / 再オープン / テレポート / ヘルプ)
  *
  * ブートストラップ段階で登録するため、生成時点では Koin コンテナがまだ存在しない。
  * 依存はコマンドの実行時にコンテナから取り出す
@@ -84,6 +84,33 @@ class TicketCommand {
     @CommandDescription("運営にお問い合わせを送信します")
     suspend fun create(source: CommandSourceStack) {
         ticket(source)
+    }
+
+    /**
+     * 主なコマンドの簡単な説明と、詳しい使い方のページへのリンクを表示する
+     *
+     * コンソールからも実行できる (URL がそのままログに出るため)。
+     *
+     * @param source コマンドの実行元
+     */
+    @Command("ticket help")
+    @Permission(TicketPermissions.USE)
+    @CommandDescription("お問い合わせ機能の使い方を表示します")
+    fun help(source: CommandSourceStack) {
+        val sender = source.sender
+        // 詳しい説明はドキュメントに任せ、チャットには日常的に使うコマンドだけを短く並べる
+        // <番号> は MiniMessage のタグとして解釈されないよう \< でエスケープする
+        sender.sendRichMessage(
+            """
+            <gold>[Ticket]</gold> 運営へのお問い合わせ機能です
+            <yellow>/ticket</yellow> <gray>- お問い合わせを送信する</gray>
+            <yellow>/ticket list</yellow> <gray>- 送信したお問い合わせの一覧を見る</gray>
+            <yellow>/ticket view \<番号></yellow> <gray>- 内容と運営からの返信を見る</gray>
+            <yellow>/ticket comment \<番号></yellow> <gray>- コメントを書き込む</gray>
+            <yellow>/ticket close \<番号></yellow> <gray>- 解決したお問い合わせを閉じる</gray>
+            詳しくは<click:open_url:'$HELP_URL'><hover:show_text:'$HELP_URL'><aqua><u>こちら</u></aqua></hover></click>
+            """.trimIndent(),
+        )
     }
 
     /**
@@ -438,6 +465,9 @@ class TicketCommand {
     }
 
     companion object {
+        /** /ticket help で案内するプレイヤー向けドキュメントの URL (プレビューではなく本番のドキュメントサイト) */
+        const val HELP_URL: String = "https://utils.plugin.morino.party/docs/player/ticket"
+
         /** チケット id の Tab 補完に使うサジェストプロバイダーの名前 */
         const val TICKET_ID_SUGGESTIONS: String = "ticket-ids"
 
