@@ -18,6 +18,7 @@ import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.paper.MoripaUtils
 import party.morino.moripautils.paper.model.schematic.SchematicUploadResult
 import party.morino.moripautils.paper.schematic.SchematicUploader
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
@@ -27,14 +28,19 @@ import java.util.concurrent.CompletableFuture
  * 再読み込みのたびに Koin コンテナが作り直されるため、アップロード役は呼び出しのたびにコンテナから取り出す。
  */
 class PaperSchematicAPI : SchematicAPI {
-    override fun uploadClipboard(player: Player, title: String?): CompletableFuture<UUID> = runUpload { uploader ->
-        uploader.uploadClipboard(player, title)
-    }
-
-    override fun uploadSchematic(content: ByteArray, title: String?, uploaderName: String?): CompletableFuture<UUID> =
+    override fun uploadClipboard(player: Player, title: String?, deleteAt: Instant?): CompletableFuture<UUID> =
         runUpload { uploader ->
-            uploader.uploadSchematic(content, title, uploaderName)
+            uploader.uploadClipboard(player, title, deleteAt)
         }
+
+    override fun uploadSchematic(
+        content: ByteArray,
+        title: String?,
+        uploaderName: String?,
+        deleteAt: Instant?,
+    ): CompletableFuture<UUID> = runUpload { uploader ->
+        uploader.uploadSchematic(content, title, uploaderName, deleteAt)
+    }
 
     /**
      * プラグインのコルーチンスコープでアップロードを行い、結果を Future に変換する

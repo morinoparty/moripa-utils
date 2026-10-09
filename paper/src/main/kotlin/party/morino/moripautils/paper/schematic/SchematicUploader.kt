@@ -22,6 +22,7 @@ import party.morino.moripautils.common.schematic.SpongeSchematicV3Format
 import party.morino.moripautils.paper.MoripaUtils
 import party.morino.moripautils.paper.model.schematic.SchematicUploadResult
 import party.morino.moripautils.paper.schematic.worldedit.WorldEditSchematicExporter
+import java.time.Instant
 import java.util.logging.Level
 
 /**
@@ -39,9 +40,10 @@ class SchematicUploader : MoripaUtilsKoinComponent {
      *
      * @param player クリップボードを持つプレイヤー (アップロードした人として記録する)
      * @param title タイトル (null または空白のみなら記録しない)
+     * @param deleteAt 削除する予定の日時 (期限なしの場合は null)
      * @return アップロードの結果
      */
-    suspend fun uploadClipboard(player: Player, title: String?): SchematicUploadResult {
+    suspend fun uploadClipboard(player: Player, title: String?, deleteAt: Instant? = null): SchematicUploadResult {
         val normalizedTitle = normalizeTitle(title) ?: return invalidTitle()
         // WorldEdit の API クラスに触れる前に、Bukkit の API だけで存在を確認する
         if (!isWorldEditEnabled()) {
@@ -62,6 +64,7 @@ class SchematicUploader : MoripaUtilsKoinComponent {
                 uploaderName = player.name,
                 uploaderUuid = player.uniqueId,
                 spawnPosition = exported.spawnPosition,
+                deleteAt = deleteAt,
             )
             upload(service, request)
         }
@@ -76,9 +79,15 @@ class SchematicUploader : MoripaUtilsKoinComponent {
      * @param content Sponge schematic v3 のバイト列
      * @param title タイトル (null または空白のみなら記録しない)
      * @param uploaderName アップロードした人として記録する名前 (null なら記録しない)
+     * @param deleteAt 削除する予定の日時 (期限なしの場合は null)
      * @return アップロードの結果
      */
-    suspend fun uploadSchematic(content: ByteArray, title: String?, uploaderName: String?): SchematicUploadResult {
+    suspend fun uploadSchematic(
+        content: ByteArray,
+        title: String?,
+        uploaderName: String?,
+        deleteAt: Instant? = null,
+    ): SchematicUploadResult {
         val normalizedTitle = normalizeTitle(title) ?: return invalidTitle()
         val service = serviceOrNull() ?: return storageNotConfigured()
         // ストレージに不正なファイルが溜まらないよう、Sponge schematic v3 として読めるかを先に確かめる
@@ -92,6 +101,7 @@ class SchematicUploader : MoripaUtilsKoinComponent {
             uploaderName = uploaderName?.takeIf { it.isNotBlank() },
             uploaderUuid = null,
             spawnPosition = SchematicSpawnPosition.ORIGIN,
+            deleteAt = deleteAt,
         )
         return catchingFailures { upload(service, request) }
     }

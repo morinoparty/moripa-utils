@@ -84,6 +84,7 @@ WorldEdit で書き出した場合は、`//copy` を実行したときの基準�
 | `spawn_position` | schematic を使うときのスポーン位置 (`x` / `y` / `z` / `yaw` / `pitch`) です。 |
 | `world_size` | schematic の範囲の大きさ (`width` / `height` / `length`) です。 |
 | `uploaded_at` | アップロードした日時 (ISO 8601、UTC) です。 |
+| `delete_at` | 削除する予定の日時 (ISO 8601、UTC) です。期限がない場合は `null` です。 |
 
 ```json
 {
@@ -106,12 +107,22 @@ WorldEdit で書き出した場合は、`//copy` を実行したときの基準�
         "height": 8,
         "length": 15
     },
-    "uploaded_at": "2026-10-09T11:30:00.123Z"
+    "uploaded_at": "2026-10-09T11:30:00.123Z",
+    "delete_at": null
 }
 ```
 
 `format` と `file_name` は、今後 Litematica などの形式に対応したときに形式ごとに変わります。
 schematic 本体を読む場合は、ファイル名を決め打ちせずに `file_name` を参照してください。
+
+### 削除予定日時
+
+`delete_at` は、一定期間が過ぎた schematic を自動的に削除するための日時です。
+`/mu schematic upload` でアップロードした場合は `null` (期限なし) になります。
+公開 API では `deleteAt` 引数で指定できます。
+
+MoripaUtils 自身は schematic を削除しません。
+定期的に実行するジョブなどで `info.json` を読み、`delete_at` を過ぎた schematic のディレクトリ (`schematics/<ID>/`) を削除してください。
 
 ### スポーン位置
 
@@ -130,8 +141,8 @@ API は MoripaUtils の有効化後に使用できるため、`plugin.yml` な�
 
 | メソッド | 説明 |
 |---------|------|
-| `uploadClipboard(player: Player, title: String?)` | プレイヤーの WorldEdit / FAWE のクリップボードをアップロードします。プレイヤーの名前・UUID・位置も記録されます。 |
-| `uploadSchematic(content: ByteArray, title: String?, uploaderName: String?)` | Sponge Schematic v3 形式のバイト列をそのままアップロードします。Sponge Schematic v3 でない内容 (v1 / v2 や gzip 圧縮されていないもの) は拒否されます。WorldEdit / FAWE が導入されていなくても使用できます。 |
+| `uploadClipboard(player: Player, title: String?, deleteAt: Instant?)` | プレイヤーの WorldEdit / FAWE のクリップボードをアップロードします。プレイヤーの名前・UUID・位置も記録されます。 |
+| `uploadSchematic(content: ByteArray, title: String?, uploaderName: String?, deleteAt: Instant?)` | Sponge Schematic v3 形式のバイト列をそのままアップロードします。Sponge Schematic v3 でない内容 (v1 / v2 や gzip 圧縮されていないもの) は拒否されます。WorldEdit / FAWE が導入されていなくても使用できます。 |
 
 どちらのメソッドも `CompletableFuture<UUID>` を返し、アップロードに成功すると ID で完了します。
 失敗した場合は `SchematicUploadException` で完了し、`reason` プロパティで理由を確認できます。
@@ -147,7 +158,9 @@ API は MoripaUtils の有効化後に使用できるため、`plugin.yml` な�
 
 ```kotlin
 val api = MoripaUtilsAPI.getInstance()
-api.schematic.uploadClipboard(player, "ロビーの噴水").whenComplete { id, error ->
+// 7 日後に削除する予定としてアップロードする
+val deleteAt = Instant.now().plus(7, ChronoUnit.DAYS)
+api.schematic.uploadClipboard(player, "ロビーの噴水", deleteAt).whenComplete { id, error ->
     if (error != null) {
         // 失敗した理由に応じて処理する
         return@whenComplete

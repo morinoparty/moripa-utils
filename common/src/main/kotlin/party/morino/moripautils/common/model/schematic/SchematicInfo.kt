@@ -26,6 +26,8 @@ import kotlinx.serialization.Serializable
  * @property spawnPosition schematic を使うときのスポーン位置
  * @property worldSize schematic の範囲の大きさ
  * @property uploadedAt アップロードした日時 (ISO 8601、UTC)
+ * @property deleteAt 削除する予定の日時 (ISO 8601、UTC)。期限なしの場合は null。
+ *   MoripaUtils 自身は削除せず、外部の処理 (定期実行のジョブなど) がこの値を見て削除することを想定する
  */
 @Serializable
 data class SchematicInfo(
@@ -39,6 +41,7 @@ data class SchematicInfo(
     @SerialName("spawn_position") val spawnPosition: SchematicSpawnPosition,
     @SerialName("world_size") val worldSize: SchematicWorldSize,
     @SerialName("uploaded_at") val uploadedAt: String,
+    @SerialName("delete_at") val deleteAt: String? = null,
 ) {
     companion object {
         /** title の最大文字数 */

@@ -8,6 +8,7 @@
  */
 package party.morino.moripautils.common.model.schematic
 
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -20,6 +21,7 @@ import java.util.UUID
  * @property uploaderName アップロードしたプレイヤーの名前
  * @property uploaderUuid アップロードしたプレイヤーの UUID
  * @property spawnPosition schematic を使うときのスポーン位置
+ * @property deleteAt 削除する予定の日時 (期限なしの場合は null)
  */
 data class SchematicUploadRequest(
     val format: SchematicFormat,
@@ -29,6 +31,7 @@ data class SchematicUploadRequest(
     val uploaderName: String?,
     val uploaderUuid: UUID?,
     val spawnPosition: SchematicSpawnPosition,
+    val deleteAt: Instant? = null,
 ) {
     // ByteArray は参照で比較されるため、内容で比較するよう equals / hashCode を定義する
     override fun equals(other: Any?): Boolean = other is SchematicUploadRequest &&
@@ -38,7 +41,8 @@ data class SchematicUploadRequest(
         title == other.title &&
         uploaderName == other.uploaderName &&
         uploaderUuid == other.uploaderUuid &&
-        spawnPosition == other.spawnPosition
+        spawnPosition == other.spawnPosition &&
+        deleteAt == other.deleteAt
 
     override fun hashCode(): Int {
         var result = format.hashCode()
@@ -48,6 +52,7 @@ data class SchematicUploadRequest(
         result = HASH_MULTIPLIER * result + (uploaderName?.hashCode() ?: 0)
         result = HASH_MULTIPLIER * result + (uploaderUuid?.hashCode() ?: 0)
         result = HASH_MULTIPLIER * result + spawnPosition.hashCode()
+        result = HASH_MULTIPLIER * result + (deleteAt?.hashCode() ?: 0)
         return result
     }
 

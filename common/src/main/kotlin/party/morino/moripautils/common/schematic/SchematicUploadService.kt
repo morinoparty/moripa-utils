@@ -72,6 +72,7 @@ class SchematicUploadService : MoripaUtilsKoinComponent {
         spawnPosition = request.spawnPosition,
         worldSize = request.worldSize,
         uploadedAt = uploadedAt.toString(),
+        deleteAt = request.deleteAt?.toString(),
     )
 
     private companion object {

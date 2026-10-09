@@ -28,6 +28,7 @@ import party.morino.moripautils.common.model.schematic.SchematicSpawnPosition
 import party.morino.moripautils.common.model.schematic.SchematicUploadRequest
 import party.morino.moripautils.common.model.schematic.SchematicWorldSize
 import party.morino.moripautils.common.storage.ObjectStorage
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -50,7 +51,11 @@ class SchematicUploadServiceTest {
     }
 
     /** テスト用の依頼を作る */
-    private fun request(content: ByteArray = byteArrayOf(1, 2, 3), title: String? = null) = SchematicUploadRequest(
+    private fun request(
+        content: ByteArray = byteArrayOf(1, 2, 3),
+        title: String? = null,
+        deleteAt: Instant? = null,
+    ) = SchematicUploadRequest(
         format = SchematicFormat.SPONGE_V3,
         content = content,
         worldSize = SchematicWorldSize(3, 4, 5),
@@ -58,6 +63,7 @@ class SchematicUploadServiceTest {
         uploaderName = "Steve",
         uploaderUuid = UUID.fromString("00000000-0000-0000-0000-000000000001"),
         spawnPosition = SchematicSpawnPosition(1.5, 2.0, -3.25, 90f, 10f),
+        deleteAt = deleteAt,
     )
 
     @Test
@@ -65,7 +71,7 @@ class SchematicUploadServiceTest {
     fun uploadsSchematicAndInfo() = runBlocking {
         val content = byteArrayOf(1, 2, 3)
 
-        val id = service.upload(request(content, title = "House"))
+        val id = service.upload(request(content, title = "House", deleteAt = Instant.parse("2026-10-16T00:00:00Z")))
 
         // UUID v7 (バージョン 7、RFC 4122 のバリアント) で払い出される
         assertEquals(7, id.version())
@@ -87,16 +93,18 @@ class SchematicUploadServiceTest {
         assertEquals("Steve", json["uploader_name"]!!.jsonPrimitive.content)
         assertEquals("-3.25", json["spawn_position"]!!.jsonObject["z"]!!.jsonPrimitive.content)
         assertEquals("4", json["world_size"]!!.jsonObject["height"]!!.jsonPrimitive.content)
+        assertEquals("2026-10-16T00:00:00Z", json["delete_at"]!!.jsonPrimitive.content)
     }
 
     @Test
-    @DisplayName("Writes null title explicitly")
-    fun writesNullTitle() = runBlocking {
-        service.upload(request(title = null))
+    @DisplayName("Writes null title and delete_at explicitly")
+    fun writesNullTitleAndDeleteAt() = runBlocking {
+        service.upload(request(title = null, deleteAt = null))
 
         // キーを省略せず null を書き、読む側がキーの有無を気にしなくて済むようにする
         val json = Json.parseToJsonElement(storage.puts.last().content.decodeToString()).jsonObject
         assertEquals(JsonNull, json["title"])
+        assertEquals(JsonNull, json["delete_at"])
     }
 
     @Test
