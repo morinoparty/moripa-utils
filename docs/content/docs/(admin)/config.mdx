@@ -77,6 +77,14 @@ observability {
     }
 }
 server=main
+storage {
+    accessKeyId=""
+    bucket=""
+    endpoint=""
+    pathStyleAccess=false
+    region=us-east-1
+    secretAccessKey=""
+}
 ticket {
     categories=[
         {
@@ -111,7 +119,7 @@ ticket {
 ```
 
 Velocity では、`server` のデフォルト値が `proxy`、`observability.http.port` のデフォルト値が `9226` になります。
-チケット機能とデータベースは Paper 専用のため、`ticket` ブロックと `database` ブロックは Velocity では使用されません (値の検証は行われます)。
+チケット機能、データベース、ストレージは Paper 専用のため、`ticket` ブロック、`database` ブロック、`storage` ブロックは Velocity では使用されません (値の検証は行われます)。
 
 ## 共通の項目
 
@@ -134,6 +142,39 @@ Velocity では、`server` のデフォルト値が `proxy`、`observability.htt
 | `database.mysql.*` | - | MySQL の接続先 (`host` / `port` / `database` / `user` / `password` / `properties`) です。 |
 
 各項目の詳しい説明と MySQL の設定例は [データベース](/docs/database) を参照してください。
+
+## storage
+
+`storage` ブロックでは、データベースとは別に、ファイルなどを保存する S3 互換のオブジェクトストレージへの接続を設定します。
+AWS S3 のほか、Cloudflare R2 や MinIO などの S3 互換ストレージを使用できます。
+この設定は Paper でのみ使用されます。
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `storage.endpoint` | `""` | 接続先のエンドポイント URL です。`http://` または `https://` から始まる必要があります。空文字の場合は、`storage.region` に対応する AWS S3 のエンドポイントを使用します。 |
+| `storage.region` | `us-east-1` | リージョン名です。空にはできません。Cloudflare R2 では `auto` を指定します。 |
+| `storage.bucket` | `""` | 使用するバケットの名前です。事前に作成しておく必要があります。 |
+| `storage.accessKeyId` | `""` | 認証に使用するアクセスキー ID です。 |
+| `storage.secretAccessKey` | `""` | 認証に使用するシークレットアクセスキーです。 |
+| `storage.pathStyleAccess` | `false` | バケット名をホスト名ではなく URL のパスに含める (path-style) かどうかです。MinIO などでは `true` にします。 |
+
+`storage.bucket`、`storage.accessKeyId`、`storage.secretAccessKey` のいずれかが空の場合、ストレージは未設定として扱われます。
+
+Cloudflare R2 を使用する場合の例は以下のとおりです。
+
+```text
+storage {
+    endpoint = "https://<ACCOUNT_ID>.r2.cloudflarestorage.com"
+    region = auto
+    bucket = "moripa-utils"
+    accessKeyId = "<ACCESS_KEY_ID>"
+    secretAccessKey = "<SECRET_ACCESS_KEY>"
+}
+```
+
+<Callout type="warn">
+`config.conf` にはシークレットアクセスキーが平文で保存されます。ファイルを公開リポジトリなどで共有しないでください。
+</Callout>
 
 ## observability
 

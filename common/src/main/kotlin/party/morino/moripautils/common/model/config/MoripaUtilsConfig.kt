@@ -14,11 +14,13 @@ import kotlinx.serialization.Serializable
 /**
  * MoripaUtils 全体の設定 (プラグインのデータフォルダにある config.conf に対応する)
  *
- * Paper / Velocity で同じ形を使う。Velocity ではチケット機能とデータベースを使わないため [ticket] と [database] は無視される。
+ * Paper / Velocity で同じ形を使う。Velocity ではチケット機能とデータベース / ストレージを使わないため
+ * [ticket] / [database] / [storage] は無視される。
  *
  * @property server このサーバーを識別する文字列 (例: main, lobby)。メトリクスのラベルやチケットの送信元として使う。
  *   英数字 / ハイフン / アンダースコアのみ使用できる
  * @property database 各機能が共有するデータベース (SQLite / MySQL) の設定
+ * @property storage 各機能が共有するオブジェクトストレージ (S3 互換) の設定
  * @property observability メトリクス公開 (observability 機能) の設定
  * @property ticket お問い合わせ (ticket 機能) の設定
  * @throws IllegalArgumentException server が空、または使用できない文字を含む場合
@@ -27,6 +29,7 @@ import kotlinx.serialization.Serializable
 data class MoripaUtilsConfig(
     val server: String = DEFAULT_SERVER,
     val database: DatabaseConfig = DatabaseConfig(),
+    val storage: StorageConfig = StorageConfig(),
     val observability: ObservabilityConfig = ObservabilityConfig(),
     val ticket: TicketConfig = TicketConfig(),
 ) {

@@ -116,6 +116,45 @@ class MoripaUtilsConfigLoaderTest {
     }
 
     @Test
+    @DisplayName("Parses S3 compatible storage settings")
+    fun parsesStorage() {
+        val loader = loaderWith(
+            """
+            storage {
+              endpoint = "https://example.r2.cloudflarestorage.com"
+              region = auto
+              bucket = moripa
+              accessKeyId = key
+              secretAccessKey = s3cr3t-value
+            }
+            """.trimIndent(),
+        )
+
+        val storage = loader.load().storage
+
+        // 指定した値が反映され、省略した pathStyleAccess は既定値になる
+        assertEquals("https://example.r2.cloudflarestorage.com", storage.endpoint)
+        assertEquals("auto", storage.region)
+        assertEquals("moripa", storage.bucket)
+        assertEquals(false, storage.pathStyleAccess)
+        assertTrue(storage.isConfigured)
+        // シークレットは toString に出さない
+        assertFalse(storage.toString().contains("s3cr3t-value"), storage.toString())
+    }
+
+    @Test
+    @DisplayName("Rejects storage endpoint without scheme")
+    fun rejectsStorageEndpointWithoutScheme() {
+        val loader = loaderWith(
+            """
+            storage { endpoint = "s3.example.com" }
+            """.trimIndent(),
+        )
+
+        assertThrows(IllegalStateException::class.java) { loader.load() }
+    }
+
+    @Test
     @DisplayName("Rejects invalid ticket category id")
     fun rejectsInvalidCategoryId() {
         // 大文字や空白を含む id は TicketCategory の init ブロックで拒否される
