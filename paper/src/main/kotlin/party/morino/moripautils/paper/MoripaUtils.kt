@@ -30,14 +30,20 @@ import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.model.config.DatabaseConfig
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.ObservabilityConfig
+import party.morino.moripautils.common.model.config.StorageConfig
 import party.morino.moripautils.common.model.reload.ReloadResult
 import party.morino.moripautils.common.observability.http.MetricsHttpServer
 import party.morino.moripautils.common.observability.metrics.JvmMetricsCollector
 import party.morino.moripautils.common.observability.metrics.MetricsCollector
 import party.morino.moripautils.common.observability.metrics.MetricsExporter
 import party.morino.moripautils.common.observability.metrics.SampledMetricsCollector
+import party.morino.moripautils.common.schematic.di.SchematicModule
+import party.morino.moripautils.common.storage.ObjectStorage
+import party.morino.moripautils.common.storage.di.StorageModule
 import party.morino.moripautils.common.ticket.TicketService
 import party.morino.moripautils.common.ticket.di.TicketModule
+import party.morino.moripautils.api.MoripaUtilsAPI
+import party.morino.moripautils.paper.api.PaperMoripaUtilsAPI
 import party.morino.moripautils.paper.di.PaperModule
 import party.morino.moripautils.paper.observability.metrics.ChunkEventListener
 import party.morino.moripautils.paper.observability.metrics.MetricsSampler
@@ -59,6 +65,7 @@ import java.io.IOException
  * observability 機能が有効な場合は、メトリクスコレクターを登録して Prometheus 用の HTTP サーバーと
  * メインスレッドのサンプラーを起動する。
  * ticket 機能が有効な場合は、/ticket が使うサービスと参加時の案内を読み込み、MineAuth があれば HTTP API を登録する。
+ * storage が設定されている場合は、schematic のアップロード (/mu schematic upload と公開 API) が使うストレージを読み込む。
  * /mu reload ([reload]) では、各機能を停止してから新しい設定で Koin コンテナごと作り直す。
  *
  * @property commandManager ブートストラップ段階で生成した Cloud のコマンドマネージャー。
@@ -95,6 +102,8 @@ open class MoripaUtils(
         setupKoin(config)
         MoripaUtilsCommon.init()
         startFeatures(config)
+        // 公開 API は呼び出し時に Koin から依存を取り出すため、再読み込みしても設定し直す必要はない
+        MoripaUtilsAPI.setInstance(PaperMoripaUtilsAPI())
 
         logger.info("${pluginMeta.name} v${pluginMeta.version} has been enabled!")
     }
@@ -171,6 +180,11 @@ open class MoripaUtils(
         } else {
             logger.info("Ticket is disabled in config.conf")
         }
+        if (config.storage.isConfigured) {
+            startStorage(config.storage)
+        } else {
+            logger.info("Storage is not configured in config.conf; schematic upload is disabled")
+        }
     }
 
     /**
@@ -191,6 +205,8 @@ open class MoripaUtils(
         // ticket 機能が無効な場合はサービスもデータベースも定義されていない
         koin?.getOrNull<TicketService>()?.close()
         koin?.getOrNull<MoripaUtilsDatabase>()?.close()
+        // ストレージが設定されていない場合は定義されていない
+        koin?.getOrNull<ObjectStorage>()?.close()
     }
 
     /**
@@ -260,6 +276,24 @@ open class MoripaUtils(
         } else {
             logger.info("MineAuth is not installed; ticket HTTP endpoints are disabled")
         }
+    }
+
+    /**
+     * 共有オブジェクトストレージと、それを使う schematic のアップロードを読み込む
+     *
+     * S3 クライアントは最初のアップロード時に生成するため、ここでは接続しない。
+     * AWS SDK は MoripaUtilsLoader が実行時に解決したものを使う。
+     *
+     * @param storageConfig ストレージの設定 (bucket と認証情報が設定済みであること)
+     */
+    private fun startStorage(storageConfig: StorageConfig) {
+        MoripaUtilsKoinContext.loadModules(
+            listOf(
+                StorageModule.create(storageConfig),
+                SchematicModule.create(),
+            ),
+        )
+        logger.info("Storage is configured (bucket: ${storageConfig.bucket}); schematic upload is enabled")
     }
 
     /**

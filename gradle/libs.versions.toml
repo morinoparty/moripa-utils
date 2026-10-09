@@ -18,6 +18,10 @@ exposed = "1.5.0"
 # テスト用。Paper では JAR に同梱せず、サーバー同梱の sqlite-jdbc (Paper 26.x では 3.49.1.0) を実行時に使う
 sqlite = "3.53.4.0"
 mineauth = "0.5.1"
+# S3 互換ストレージのクライアント。JAR に同梱せず、Paper の PluginLoader で実行時に解決する
+awsSdk = "2.55.3"
+# schematic の読み書きに使う WorldEdit の API (FAWE も同じ API を実装している)。実行時は WorldEdit / FAWE プラグイン側のクラスを使う
+worldedit = "7.4.5"
 
 [libraries]
 paper-api = { group = "io.papermc.paper", name = "paper-api", version.ref = "paper" }
@@ -57,6 +61,14 @@ sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
 # MineAuth の公開 API (Web からのチケット操作などで連携する。実行時は MineAuth プラグイン側のクラスを使う)
 mineauth-api = { group = "party.morino", name = "mineauth-api", version.ref = "mineauth" }
 
+# S3 互換ストレージへのアップロード (HTTP クライアントは追加依存のない JDK 標準の URLConnection 実装を使う)
+aws-s3 = { group = "software.amazon.awssdk", name = "s3", version.ref = "awsSdk" }
+aws-url-connection-client = { group = "software.amazon.awssdk", name = "url-connection-client", version.ref = "awsSdk" }
+
+# WorldEdit の API (プレイヤーのクリップボードを schematic として書き出す)
+worldedit-core = { group = "com.sk89q.worldedit", name = "worldedit-core", version.ref = "worldedit" }
+worldedit-bukkit = { group = "com.sk89q.worldedit", name = "worldedit-bukkit", version.ref = "worldedit" }
+
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mock-bukkit = { group = "org.mockbukkit.mockbukkit", name = "mockbukkit-v26.2", version.ref = "mockBukkit" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
@@ -85,3 +97,5 @@ koin-test = ["koin-test", "koin-test-junit5"]
 config = ["kotlinx-serialization-hocon", "typesafe-config"]
 database = ["exposed-core", "exposed-jdbc", "exposed-java-time", "sqlite"]
 prometheus = ["prometheus-core", "prometheus-httpserver", "prometheus-jvm"]
+storage = ["aws-s3", "aws-url-connection-client"]
+worldedit = ["worldedit-core", "worldedit-bukkit"]

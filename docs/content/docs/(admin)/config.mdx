@@ -159,6 +159,7 @@ AWS S3 のほか、Cloudflare R2 や MinIO などの S3 互換ストレージを
 | `storage.pathStyleAccess` | `false` | バケット名をホスト名ではなく URL のパスに含める (path-style) かどうかです。MinIO などでは `true` にします。 |
 
 `storage.bucket`、`storage.accessKeyId`、`storage.secretAccessKey` のいずれかが空の場合、ストレージは未設定として扱われます。
+ストレージは [Schematic](/docs/schematic) 機能のアップロード先として使用されます。
 
 Cloudflare R2 を使用する場合の例は以下のとおりです。
 

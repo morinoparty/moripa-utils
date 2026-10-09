@@ -28,6 +28,8 @@ dependencies {
 
     // Prometheus クライアント (レジストリ / HTTP エクスポーター / JVM メトリクス)
     implementation(libs.bundles.prometheus)
+    // S3 互換ストレージのクライアント。JAR に同梱せず、Paper では PluginLoader が実行時に解決する
+    compileOnly(libs.bundles.storage)
     // common のクラスは KoinComponent として依存を解決する
     implementation(libs.koin.core)
 
@@ -52,12 +54,14 @@ val buildConstantsDir = layout.buildDirectory.dir("generated/sources/buildConsta
 val generateBuildConstants by tasks.registering {
     val pluginVersion = project.version.toString()
     val kotlinVersion = libs.versions.kotlin.get()
+    val awsSdkVersion = libs.versions.awsSdk.get()
     val packageDir = basePackage.replace('.', '/')
     val outputDir = buildConstantsDir
 
     // 入力値が変わったときだけ再生成されるようにする
     inputs.property("pluginVersion", pluginVersion)
     inputs.property("kotlinVersion", kotlinVersion)
+    inputs.property("awsSdkVersion", awsSdkVersion)
     inputs.property("basePackage", basePackage)
     outputs.dir(outputDir)
 
@@ -78,6 +82,9 @@ val generateBuildConstants by tasks.registering {
             |
             |    /** ビルドに使用した Kotlin のバージョン (gradle/libs.versions.toml の kotlin) */
             |    const val KOTLIN_VERSION = "$kotlinVersion"
+            |
+            |    /** S3 互換ストレージに使う AWS SDK for Java v2 のバージョン (gradle/libs.versions.toml の awsSdk) */
+            |    const val AWS_SDK_VERSION = "$awsSdkVersion"
             |}
             |
             """.trimMargin(),

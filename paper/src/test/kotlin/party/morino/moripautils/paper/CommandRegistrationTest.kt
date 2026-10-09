@@ -18,6 +18,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import party.morino.moripautils.paper.reload.command.ReloadCommand
+import party.morino.moripautils.paper.schematic.command.SchematicCommand
 import party.morino.moripautils.paper.ticket.command.TicketCommand
 
 /**
@@ -37,12 +38,13 @@ class CommandRegistrationTest {
     }
 
     @Test
-    @DisplayName("Ticket and reload commands are accepted by the annotation parser")
+    @DisplayName("Ticket, reload and schematic commands are accepted by the annotation parser")
     fun commandsCanBeParsed() {
         // 本番の登録処理 (TicketCommandRegistrar / ReloadCommandRegistrar) と同じ設定でパースする
         val parser = AnnotationParser(TestCommandManager(), CommandSourceStack::class.java).installCoroutineSupport()
 
         assertDoesNotThrow { parser.parse(TicketCommand()) }
         assertDoesNotThrow { parser.parse(ReloadCommand()) }
+        assertDoesNotThrow { parser.parse(SchematicCommand()) }
     }
 }

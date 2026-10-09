@@ -36,6 +36,10 @@ dependencies {
     implementation(libs.bundles.database)
     // MineAuth の公開 API。実行時は MineAuth プラグインのクラスを joinClasspath で参照するため同梱しない
     compileOnly(libs.mineauth.api)
+    // WorldEdit の API。実行時は WorldEdit / FAWE プラグインのクラスを joinClasspath で参照するため同梱しない
+    compileOnly(libs.bundles.worldedit) { isTransitive = false }
+    // S3 互換ストレージのクライアント。JAR に同梱せず、MoripaUtilsLoader が実行時に解決する
+    compileOnly(libs.bundles.storage)
     implementation(libs.bundles.coroutines.bukkit)
 
     // JARにバンドル
@@ -102,6 +106,10 @@ sourceSets.main {
             dependencies {
                 // MineAuth は任意依存。先にロードし、joinClasspath で mineauth-api のクラスを参照できるようにする
                 server("MineAuth", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
+                // WorldEdit / FAWE は任意依存。クリップボードを schematic として書き出すために API のクラスを参照する
+                // (FAWE は FastAsyncWorldEdit という名前で動作するため、両方を宣言しておく)
+                server("WorldEdit", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
+                server("FastAsyncWorldEdit", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
             }
             permissions {
                 // /mu reload で config.conf を再読み込みする権限
@@ -113,6 +121,11 @@ sourceSets.main {
                 register("moripautils.ticket.use") {
                     description = "Allows submitting tickets with /ticket"
                     default = Permission.Default.TRUE
+                }
+                // /mu schematic upload で WorldEdit のクリップボードをストレージへアップロードする権限
+                register("moripautils.schematic.upload") {
+                    description = "Allows uploading the WorldEdit clipboard as a schematic with /mu schematic upload"
+                    default = Permission.Default.OP
                 }
                 // チケットの閲覧や対応、新しいチケットなどの通知の受け取りを行うスタッフ向けの権限
                 register("moripautils.ticket.staff") {

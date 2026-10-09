@@ -45,6 +45,8 @@ allprojects {
         maven("https://jitpack.io")
         maven("https://plugins.gradle.org/m2/")
         maven("https://repo.codemc.io/repository/maven-public/")
+        // WorldEdit の API
+        maven("https://maven.enginehub.org/repo/")
     }
 
     dependencies {
@@ -76,7 +78,7 @@ allprojects {
         compileKotlin {
             compilerOptions.jvmTarget.set(JvmTarget.JVM_25)
             compilerOptions.javaParameters = true
-            compilerOptions.languageVersion.set(KotlinVersion.KOTLIN_2_0)
+            compilerOptions.languageVersion.set(KotlinVersion.KOTLIN_2_4)
         }
         compileTestKotlin {
             compilerOptions.jvmTarget.set(JvmTarget.JVM_25)
