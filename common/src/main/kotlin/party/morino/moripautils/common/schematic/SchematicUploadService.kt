@@ -11,7 +11,6 @@ package party.morino.moripautils.common.schematic
 import kotlinx.serialization.json.Json
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
-import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.schematic.SchematicInfo
 import party.morino.moripautils.common.model.schematic.SchematicUploadRequest
 import party.morino.moripautils.common.storage.ObjectStorage
@@ -29,7 +28,6 @@ import kotlin.uuid.toJavaUuid
  */
 class SchematicUploadService : MoripaUtilsKoinComponent {
     private val storage: ObjectStorage by inject()
-    private val config: MoripaUtilsConfig by inject()
 
     /**
      * schematic と情報をアップロードし、払い出した id を返す
@@ -71,7 +69,6 @@ class SchematicUploadService : MoripaUtilsKoinComponent {
         title = request.title,
         uploaderName = request.uploaderName,
         uploaderUuid = request.uploaderUuid?.toString(),
-        server = config.server,
         spawnPosition = request.spawnPosition,
         worldSize = request.worldSize,
         uploadedAt = uploadedAt.toString(),

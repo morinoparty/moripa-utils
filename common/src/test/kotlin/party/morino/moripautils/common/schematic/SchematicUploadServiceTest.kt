@@ -23,7 +23,6 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.koin.dsl.module
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
-import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.schematic.SchematicFormat
 import party.morino.moripautils.common.model.schematic.SchematicSpawnPosition
 import party.morino.moripautils.common.model.schematic.SchematicUploadRequest
@@ -42,15 +41,7 @@ class SchematicUploadServiceTest {
 
     @BeforeEach
     fun setUp() {
-        val config = MoripaUtilsConfig(server = "lobby")
-        MoripaUtilsKoinContext.start(
-            listOf(
-                module {
-                    single { config }
-                    single<ObjectStorage> { storage }
-                },
-            ),
-        )
+        MoripaUtilsKoinContext.start(listOf(module { single<ObjectStorage> { storage } }))
     }
 
     @AfterEach
@@ -94,7 +85,6 @@ class SchematicUploadServiceTest {
         assertEquals("3", json["file_size"]!!.jsonPrimitive.content)
         assertEquals("House", json["title"]!!.jsonPrimitive.content)
         assertEquals("Steve", json["uploader_name"]!!.jsonPrimitive.content)
-        assertEquals("lobby", json["server"]!!.jsonPrimitive.content)
         assertEquals("-3.25", json["spawn_position"]!!.jsonObject["z"]!!.jsonPrimitive.content)
         assertEquals("4", json["world_size"]!!.jsonObject["height"]!!.jsonPrimitive.content)
     }

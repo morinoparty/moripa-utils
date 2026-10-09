@@ -23,7 +23,6 @@ import kotlinx.serialization.Serializable
  * @property title タイトル (指定されなかった場合は null)
  * @property uploaderName アップロードしたプレイヤーの名前 (分からない場合は null)
  * @property uploaderUuid アップロードしたプレイヤーの UUID (分からない場合は null)
- * @property server アップロードしたサーバー (config.conf の server)
  * @property spawnPosition schematic を使うときのスポーン位置
  * @property worldSize schematic の範囲の大きさ
  * @property uploadedAt アップロードした日時 (ISO 8601、UTC)
@@ -37,7 +36,6 @@ data class SchematicInfo(
     val title: String?,
     @SerialName("uploader_name") val uploaderName: String?,
     @SerialName("uploader_uuid") val uploaderUuid: String?,
-    val server: String,
     @SerialName("spawn_position") val spawnPosition: SchematicSpawnPosition,
     @SerialName("world_size") val worldSize: SchematicWorldSize,
     @SerialName("uploaded_at") val uploadedAt: String,
