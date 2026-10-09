@@ -16,6 +16,7 @@ import io.papermc.paper.plugin.bootstrap.PluginProviderContext
 import org.bukkit.plugin.java.JavaPlugin
 import org.incendo.cloud.execution.ExecutionCoordinator
 import org.incendo.cloud.paper.PaperCommandManager
+import org.incendo.cloud.setting.ManagerSetting
 import party.morino.moripautils.common.classloader.PluginJarPin
 import party.morino.moripautils.common.config.MoripaUtilsConfigLoader
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
@@ -49,6 +50,8 @@ class MoripaUtilsBootstrap : PluginBootstrap {
                 .builder()
                 .executionCoordinator(ExecutionCoordinator.asyncCoordinator())
                 .buildBootstrapped(context)
+        // 省略できる引数より前にフラグを書けるようにする (無効だと /ticket list --status open の --status がページ番号として解釈される)
+        manager.settings().set(ManagerSetting.LIBERAL_FLAG_PARSING, true)
         commandManager = manager
         // /mu reload はどの機能にも属さないため、config.conf の内容に関係なく登録する
         ReloadCommandRegistrar.register(manager)
