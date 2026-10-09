@@ -9,13 +9,16 @@
 package party.morino.moripautils.api.schematic
 
 import org.bukkit.entity.Player
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
 /**
  * schematic を S3 互換ストレージへアップロードする API
  *
- * schematic は Sponge schematic v3 (.schem) 形式で保存し、id として UUID v7 を払い出す。
+ * schematic は Sponge schematic v3 (.schem) 形式で schematics/{id}/schematic.schem に保存し、id として UUID v7 を払い出す。
+ * 同じディレクトリの info.json には、タイトル・アップロードした人・スポーン位置・範囲の大きさ・削除予定日時などを保存する。
+ * 削除予定日時 (deleteAt) は info.json に記録するだけで、MoripaUtils 自身は削除しない (外部の処理が削除することを想定する)。
  * Java のプラグインからも使えるよう、結果は [CompletableFuture] で返す。
  * 失敗した場合は [SchematicUploadException] で例外的に完了する ([SchematicUploadException.reason] で理由が分かる)。
  * Future はメインスレッド以外で完了することがあるため、Bukkit API を使う後続処理はメインスレッドへ戻してから行うこと。
@@ -26,20 +29,26 @@ interface SchematicAPI {
      * プレイヤーの WorldEdit / FAWE のクリップボードを schematic としてアップロードする
      *
      * //rotate などで設定した変形はクリップボードに反映してから書き出す。呼び出し自体はどのスレッドから行ってもよい。
+     * 呼び出した時点のプレイヤーの位置を、クリップボードの基準点からの相対位置としてスポーン位置に記録する。
      *
-     * @param player クリップボードを持つプレイヤー
+     * @param player クリップボードを持つプレイヤー (アップロードした人として記録する)
+     * @param title タイトル (null または空白のみなら記録しない。前後の空白は取り除く)
+     * @param deleteAt 削除する予定の日時 (期限なしの場合は null。例: 7 日後に消すなら Instant.now().plus(7, ChronoUnit.DAYS))
      * @return アップロードした schematic の id (UUID v7)
      */
-    fun uploadClipboard(player: Player): CompletableFuture<UUID>
+    fun uploadClipboard(player: Player, title: String?, deleteAt: Instant?): CompletableFuture<UUID>
 
     /**
      * Sponge schematic v3 (.schem) のバイト列をそのままアップロードする
      *
      * Sponge schematic v3 でない内容 (v1 / v2 や gzip でないもの) は拒否する。WorldEdit が導入されていなくても使える。
-     * 呼び出し自体はどのスレッドから行ってもよい。
+     * 呼び出し自体はどのスレッドから行ってもよい。スポーン位置は基準点 (0, 0, 0、向き 0) として記録する。
      *
      * @param content Sponge schematic v3 のバイト列 (gzip 圧縮された NBT)
+     * @param title タイトル (null または空白のみなら記録しない。前後の空白は取り除く)
+     * @param uploaderName アップロードした人として記録する名前 (null なら記録しない)
+     * @param deleteAt 削除する予定の日時 (期限なしの場合は null)
      * @return アップロードした schematic の id (UUID v7)
      */
-    fun uploadSchematic(content: ByteArray): CompletableFuture<UUID>
+    fun uploadSchematic(content: ByteArray, title: String?, uploaderName: String?, deleteAt: Instant?): CompletableFuture<UUID>
 }

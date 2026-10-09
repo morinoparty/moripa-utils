@@ -10,10 +10,13 @@ package party.morino.moripautils.paper.schematic.command
 
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import org.bukkit.entity.Player
+import org.incendo.cloud.annotations.Argument
 import org.incendo.cloud.annotations.Command
 import org.incendo.cloud.annotations.CommandDescription
 import org.incendo.cloud.annotations.Permission
+import org.incendo.cloud.annotation.specifier.Greedy
 import party.morino.moripautils.api.schematic.SchematicUploadFailure
+import party.morino.moripautils.common.model.schematic.SchematicInfo
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.paper.model.schematic.SchematicUploadResult
 import party.morino.moripautils.paper.schematic.SchematicPermissions
@@ -30,12 +33,18 @@ class SchematicCommand {
     /**
      * 実行したプレイヤーのクリップボードをアップロードし、id を表示する
      *
+     * 実行した時点のプレイヤーの位置を、schematic を使うときのスポーン位置として記録する。
+     *
      * @param source コマンドの実行元 (プレイヤーのみ)
+     * @param title タイトル (省略可。空白を含めて残りの引数すべてを使う)
      */
-    @Command("mu schematic upload")
+    @Command("mu schematic upload [title]")
     @Permission(SchematicPermissions.UPLOAD)
     @CommandDescription("WorldEdit のクリップボードを schematic としてアップロードします")
-    suspend fun upload(source: CommandSourceStack) {
+    suspend fun upload(
+        source: CommandSourceStack,
+        @Argument("title") @Greedy title: String?,
+    ) {
         val sender = source.sender
         // クリップボードはプレイヤーごとのセッションにあるため、コンソールからは実行できない
         val player = sender as? Player
@@ -52,7 +61,7 @@ class SchematicCommand {
 
         // 大きなクリップボードは書き出しと送信に時間がかかるため、先に受け付けたことを伝える
         player.sendRichMessage("<gray>クリップボードをアップロードしています...")
-        when (val result = uploader.uploadClipboard(player)) {
+        when (val result = uploader.uploadClipboard(player, title)) {
             // UUID には MiniMessage のタグとして解釈される文字が含まれないため、そのまま埋め込む
             is SchematicUploadResult.Success -> player.sendRichMessage(
                 "<green>アップロードしました。ID: " +
@@ -74,6 +83,7 @@ class SchematicCommand {
         SchematicUploadFailure.STORAGE_NOT_CONFIGURED -> "アップロード先のストレージが設定されていません。"
         SchematicUploadFailure.EMPTY_CLIPBOARD -> "クリップボードが空です。//copy などで範囲をコピーしてから実行してください。"
         SchematicUploadFailure.INVALID_SCHEMATIC -> "schematic の形式が不正です。"
+        SchematicUploadFailure.INVALID_TITLE -> "タイトルは ${SchematicInfo.MAX_TITLE_LENGTH} 文字以内で指定してください。"
         SchematicUploadFailure.UPLOAD_FAILED -> "アップロードに失敗しました。詳細はサーバーのログを確認してください。"
     }
 }

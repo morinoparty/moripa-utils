@@ -15,13 +15,17 @@ import com.sk89q.worldedit.WorldEditException
 import com.sk89q.worldedit.bukkit.BukkitAdapter
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats
+import com.sk89q.worldedit.math.Vector3
 import com.sk89q.worldedit.session.ClipboardHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
+import party.morino.moripautils.common.model.schematic.SchematicSpawnPosition
 import party.morino.moripautils.paper.MoripaUtils
+import party.morino.moripautils.paper.model.schematic.ExportedClipboard
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 
@@ -36,16 +40,19 @@ class WorldEditSchematicExporter : MoripaUtilsKoinComponent {
     private val plugin: MoripaUtils by inject()
 
     /**
-     * プレイヤーのクリップボードを Sponge schematic v3 のバイト列にする
+     * プレイヤーのクリップボードを Sponge schematic v3 のバイト列にし、プレイヤーの位置をスポーン位置として添える
      *
-     * セッションの参照はメインスレッドで、変形の反映と書き出しは重いため I/O スレッドで行う。
+     * セッションとプレイヤーの位置の参照はメインスレッドで、変形の反映と書き出しは重いため I/O スレッドで行う。
      *
      * @param player クリップボードを持つプレイヤー
-     * @return schematic のバイト列。クリップボードが空の場合は null
+     * @return 書き出した schematic とスポーン位置。クリップボードが空の場合は null
      * @throws IOException 変形の反映や書き出しに失敗した場合、Sponge schematic v3 の形式が見つからない場合
      */
-    suspend fun exportClipboard(player: Player): ByteArray? {
-        val holder = withContext(plugin.minecraftDispatcher) { clipboardHolderOrNull(player) } ?: return null
+    suspend fun exportClipboard(player: Player): ExportedClipboard? {
+        val (holder, location) = withContext(plugin.minecraftDispatcher) {
+            // 位置はメインスレッドで読む (書き出し中にプレイヤーが動いても、実行した瞬間の位置を使う)
+            clipboardHolderOrNull(player)?.let { it to player.location }
+        } ?: return null
         return withContext(Dispatchers.IO) {
             try {
                 // //rotate や //flip の変形はホルダーに保持されているだけなので、書き出す前にクリップボードへ反映する
@@ -54,12 +61,30 @@ class WorldEditSchematicExporter : MoripaUtilsKoinComponent {
                 val output = ByteArrayOutputStream()
                 // ライターを閉じたときに gzip が書き切られるため、use を抜けてからバイト列を取り出す
                 spongeV3Format().getWriter(output).use { writer -> writer.write(clipboard) }
-                output.toByteArray()
+                ExportedClipboard(output.toByteArray(), spawnPositionOf(holder, location))
             } catch (e: WorldEditException) {
                 // 呼び出し側が WorldEdit の例外型に触れなくて済むよう包み直す
                 throw IOException("Failed to transform clipboard: ${e.message}", e)
             }
         }
+    }
+
+    /**
+     * プレイヤーの位置を、クリップボードの基準点からの相対位置にする
+     *
+     * Sponge schematic の Offset は基準点 (//copy したときの基準点) からの相対位置なので、同じ基準で表すと
+     * 「貼り付けた位置 + スポーン位置」でワールド上の位置が求まる。
+     * 変形 (//rotate など) は基準点を中心に回転するため、相対位置にも同じ変形を掛ける。向き (yaw) は変形の影響を反映しない。
+     *
+     * @param holder プレイヤーのクリップボード
+     * @param location アップロードしたときのプレイヤーの位置
+     * @return 基準点からの相対位置と向き
+     */
+    private fun spawnPositionOf(holder: ClipboardHolder, location: Location): SchematicSpawnPosition {
+        val origin = holder.clipboard.origin
+        val relative = Vector3.at(location.x, location.y, location.z).subtract(origin.toVector3())
+        val transformed = if (holder.transform.isIdentity) relative else holder.transform.apply(relative)
+        return SchematicSpawnPosition(transformed.x(), transformed.y(), transformed.z(), location.yaw, location.pitch)
     }
 
     /**

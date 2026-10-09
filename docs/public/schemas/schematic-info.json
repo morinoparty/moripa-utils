@@ -1,0 +1,138 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://utils.plugin.morino.party/schemas/schematic-info.json",
+    "title": "MoripaUtils schematic info",
+    "description": "schematics/<id>/info.json written by MoripaUtils when a schematic is uploaded to S3 compatible storage.",
+    "type": "object",
+    "required": [
+        "id",
+        "format",
+        "file_name",
+        "file_size",
+        "title",
+        "uploader_name",
+        "uploader_uuid",
+        "spawn_position",
+        "world_size",
+        "uploaded_at",
+        "delete_at"
+    ],
+    "properties": {
+        "id": {
+            "description": "Schematic id (UUID v7). Also the directory name under schematics/.",
+            "type": "string",
+            "format": "uuid"
+        },
+        "format": {
+            "description": "Format of the schematic file. More formats (e.g. Litematica) may be added in the future.",
+            "type": "string",
+            "enum": [
+                "sponge_v3"
+            ]
+        },
+        "file_name": {
+            "description": "Name of the schematic file in the same directory. Depends on format (sponge_v3: schematic.schem).",
+            "type": "string"
+        },
+        "file_size": {
+            "description": "Size of the schematic file in bytes.",
+            "type": "integer",
+            "minimum": 0
+        },
+        "title": {
+            "description": "Title given on upload, or null.",
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 100
+        },
+        "uploader_name": {
+            "description": "Name of the player who uploaded the schematic, or null when unknown.",
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "uploader_uuid": {
+            "description": "UUID of the player who uploaded the schematic, or null when unknown.",
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "uuid"
+        },
+        "spawn_position": {
+            "description": "Spawn position relative to the paste origin of the schematic (the same origin as the Sponge schematic Offset). Add x / y / z to the paste position to get the world position. All zero when unknown.",
+            "type": "object",
+            "required": [
+                "x",
+                "y",
+                "z",
+                "yaw",
+                "pitch"
+            ],
+            "properties": {
+                "x": {
+                    "type": "number"
+                },
+                "y": {
+                    "type": "number"
+                },
+                "z": {
+                    "type": "number"
+                },
+                "yaw": {
+                    "description": "Horizontal rotation in degrees.",
+                    "type": "number"
+                },
+                "pitch": {
+                    "description": "Vertical rotation in degrees.",
+                    "type": "number"
+                }
+            },
+            "additionalProperties": false
+        },
+        "world_size": {
+            "description": "Size of the schematic region in blocks (Sponge schematic Width / Height / Length).",
+            "type": "object",
+            "required": [
+                "width",
+                "height",
+                "length"
+            ],
+            "properties": {
+                "width": {
+                    "description": "Blocks along the X axis.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "height": {
+                    "description": "Blocks along the Y axis.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "length": {
+                    "description": "Blocks along the Z axis.",
+                    "type": "integer",
+                    "minimum": 0
+                }
+            },
+            "additionalProperties": false
+        },
+        "uploaded_at": {
+            "description": "Upload time in ISO 8601 (UTC).",
+            "type": "string",
+            "format": "date-time"
+        },
+        "delete_at": {
+            "description": "Scheduled deletion time in ISO 8601 (UTC), or null when the schematic never expires. MoripaUtils does not delete it by itself; an external job is expected to delete schematics whose delete_at has passed.",
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date-time"
+        }
+    },
+    "additionalProperties": false
+}

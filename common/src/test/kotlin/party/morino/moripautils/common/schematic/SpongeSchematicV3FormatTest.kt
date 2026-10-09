@@ -9,10 +9,12 @@
 
 package party.morino.moripautils.common.schematic
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import party.morino.moripautils.common.model.schematic.SchematicWorldSize
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.util.zip.GZIPOutputStream
@@ -37,8 +39,8 @@ class SpongeSchematicV3FormatTest {
     }
 
     @Test
-    @DisplayName("Accepts Sponge v3 with other tags before Version")
-    fun acceptsSpongeV3() {
+    @DisplayName("Reads world size from Sponge v3 regardless of tag order")
+    fun readsWorldSizeFromSpongeV3() {
         val content = gzippedNbt("") {
             // Schematic の前にある無関係なタグも読み飛ばせる
             writeByte(9)
@@ -56,10 +58,35 @@ class SpongeSchematicV3FormatTest {
             writeByte(3)
             writeUTF("Version")
             writeInt(3)
+            // Width は Short だが符号なしとして読む (40000 は Short では負の値になる)
+            writeByte(2)
+            writeUTF("Width")
+            writeShort(40000)
+            writeByte(2)
+            writeUTF("Height")
+            writeShort(5)
+            writeByte(2)
+            writeUTF("Length")
+            writeShort(7)
             writeByte(0)
         }
 
-        assertTrue(SpongeSchematicV3Format.isValid(content))
+        assertEquals(SchematicWorldSize(40000, 5, 7), SpongeSchematicV3Format.readWorldSize(content))
+    }
+
+    @Test
+    @DisplayName("Rejects Sponge v3 without size tags")
+    fun rejectsSpongeV3WithoutSize() {
+        val content = gzippedNbt("") {
+            writeByte(10)
+            writeUTF("Schematic")
+            writeByte(3)
+            writeUTF("Version")
+            writeInt(3)
+            writeByte(0)
+        }
+
+        assertNull(SpongeSchematicV3Format.readWorldSize(content))
     }
 
     @Test
