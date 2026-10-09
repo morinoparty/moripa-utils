@@ -78,7 +78,7 @@ allprojects {
         compileKotlin {
             compilerOptions.jvmTarget.set(JvmTarget.JVM_25)
             compilerOptions.javaParameters = true
-            compilerOptions.languageVersion.set(KotlinVersion.KOTLIN_2_0)
+            compilerOptions.languageVersion.set(KotlinVersion.KOTLIN_2_4)
         }
         compileTestKotlin {
             compilerOptions.jvmTarget.set(JvmTarget.JVM_25)

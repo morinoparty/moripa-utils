@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -54,6 +55,16 @@ class SchematicUploadServiceTest {
         assertEquals("schematics/$id.schem", put.key)
         assertArrayEquals(content, put.content)
         assertEquals(SchematicObjectKey.CONTENT_TYPE, put.contentType)
+    }
+
+    @Test
+    @DisplayName("Later uploads get larger ids")
+    fun idsAreOrderedByUploadTime() = runBlocking {
+        val first = service.upload(byteArrayOf())
+        val second = service.upload(byteArrayOf())
+
+        // UUID v7 は単調増加するため、文字列の辞書順でもアップロード順に並ぶ
+        assertTrue(first.toString() < second.toString(), "$first < $second")
     }
 
     /** 保存の呼び出しを記録するだけのストレージ */
