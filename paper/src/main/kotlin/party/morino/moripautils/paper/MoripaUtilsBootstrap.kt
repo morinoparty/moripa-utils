@@ -16,6 +16,7 @@ import io.papermc.paper.plugin.bootstrap.PluginProviderContext
 import org.bukkit.plugin.java.JavaPlugin
 import org.incendo.cloud.execution.ExecutionCoordinator
 import org.incendo.cloud.paper.PaperCommandManager
+import party.morino.moripautils.common.classloader.PluginJarPin
 import party.morino.moripautils.common.config.MoripaUtilsConfigLoader
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.paper.reload.command.ReloadCommandRegistrar
@@ -40,6 +41,8 @@ class MoripaUtilsBootstrap : PluginBootstrap {
     private var ticketCommandRegistered: Boolean = false
 
     override fun bootstrap(context: BootstrapContext) {
+        // 稼働中に JAR を削除・置き換えされてもリソースを読めるよう、最初に JAR を開いておく
+        pinPluginJar(context)
         val manager =
             PaperCommandManager
                 .builder()
@@ -54,6 +57,21 @@ class MoripaUtilsBootstrap : PluginBootstrap {
         if (config.ticket.enabled) {
             TicketCommandRegistrar.register(manager)
             ticketCommandRegistered = true
+        }
+    }
+
+    /**
+     * プラグインの JAR を開いてキャッシュに載せる ([PluginJarPin])
+     *
+     * 失敗してもプラグインは動作するため、警告を出して続行する。
+     *
+     * @param context ブートストラップのコンテキスト (ロガーを使う)
+     */
+    private fun pinPluginJar(context: BootstrapContext) {
+        try {
+            PluginJarPin.pin(javaClass)
+        } catch (e: IOException) {
+            context.logger.warn("Failed to pin the plugin jar; replacing it while running may break the plugin: {}", e.message)
         }
     }
 

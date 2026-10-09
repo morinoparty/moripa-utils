@@ -32,3 +32,14 @@ MoripaUtils は、morinoparty の Minecraft サーバー (Paper) およびプロ
 プラグインの JAR は [GitHub Releases](https://github.com/morinoparty/moripa-utils/releases) から入手できます。
 はじめて導入する場合は、JAR の配置から Prometheus の設定までを一通り説明している [Getting Started](/docs/observability/getting-started) から読み進めてください。
 設定ファイル (`config.conf`) の構成は [設定ファイル](/docs/config) にまとめています。
+
+### JAR の更新
+
+サーバーまたはプロキシの稼働中に、`plugins` ディレクトリの JAR を削除したり新しいバージョンの JAR に置き換えたりしても、稼働中のプラグインはそのまま動作を続けます。
+起動時に JAR を開いたままにしておき、JAR 内のファイルをその開いたファイルから読み込むためです。
+新しい JAR は、次にサーバーまたはプロキシを再起動したときに読み込まれます。
+
+<Callout type="warn">
+この動作は、削除されたファイルを開いたまま読み続けられる Linux / macOS を前提としています。
+Windows では稼働中の JAR を削除できないため、サーバーまたはプロキシを停止してから置き換えてください。
+</Callout>
