@@ -24,6 +24,9 @@ enum class SchematicUploadFailure {
     /** 渡された内容が Sponge schematic v3 として読めない */
     INVALID_SCHEMATIC,
 
+    /** タイトルが長すぎる */
+    INVALID_TITLE,
+
     /** schematic の書き出し、またはストレージへの保存に失敗した */
     UPLOAD_FAILED,
 }

@@ -8,28 +8,40 @@
  */
 package party.morino.moripautils.common.schematic
 
+import party.morino.moripautils.common.model.schematic.SchematicFormat
 import java.util.UUID
 
 /**
  * schematic をオブジェクトストレージに保存するときのキーを決める
  *
+ * schematic ごとに schematics/{id}/ というディレクトリを作り、schematic 本体 (ファイル名は形式ごとに決まる) と
+ * 情報 (info.json) を並べて置く。
  * キーの形式を変えると保存済みの schematic を id から引けなくなるため、運用開始後は変更しないこと。
  */
 object SchematicObjectKey {
     /** schematic を保存するキーの接頭辞 (他の機能のオブジェクトと混ざらないようにする) */
     const val PREFIX: String = "schematics/"
 
-    /** Sponge schematic のファイル拡張子 (WorldEdit / FAWE の //schem load で読める形式) */
-    const val EXTENSION: String = "schem"
+    /** 情報のファイル名 */
+    const val INFO_FILE_NAME: String = "info.json"
 
-    /** 保存時の MIME タイプ (Sponge schematic は gzip 圧縮した NBT で、専用の MIME タイプはない) */
-    const val CONTENT_TYPE: String = "application/octet-stream"
+    /** 情報の MIME タイプ */
+    const val INFO_CONTENT_TYPE: String = "application/json"
 
     /**
-     * id から保存先のキーを作る
+     * id と形式から schematic 本体の保存先のキーを作る
      *
      * @param id schematic の id
-     * @return 保存先のキー (例: schematics/0192b3c4-....schem)
+     * @param format schematic の形式
+     * @return 保存先のキー (例: schematics/0192b3c4-.../schematic.schem)
      */
-    fun of(id: UUID): String = "$PREFIX$id.$EXTENSION"
+    fun schematic(id: UUID, format: SchematicFormat): String = "$PREFIX$id/${format.fileName}"
+
+    /**
+     * id から情報の保存先のキーを作る
+     *
+     * @param id schematic の id
+     * @return 保存先のキー (例: schematics/0192b3c4-.../info.json)
+     */
+    fun info(id: UUID): String = "$PREFIX$id/$INFO_FILE_NAME"
 }

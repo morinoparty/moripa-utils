@@ -13,6 +13,10 @@ import org.bukkit.entity.Player
 import org.koin.core.component.inject
 import party.morino.moripautils.api.schematic.SchematicUploadFailure
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
+import party.morino.moripautils.common.model.schematic.SchematicInfo
+import party.morino.moripautils.common.model.schematic.SchematicSpawnPosition
+import party.morino.moripautils.common.model.schematic.SchematicUploadRequest
+import party.morino.moripautils.common.schematic.SchematicFormatReader
 import party.morino.moripautils.common.schematic.SchematicUploadService
 import party.morino.moripautils.common.schematic.SpongeSchematicV3Format
 import party.morino.moripautils.paper.MoripaUtils
@@ -33,22 +37,33 @@ class SchematicUploader : MoripaUtilsKoinComponent {
     /**
      * プレイヤーのクリップボードをアップロードする
      *
-     * @param player クリップボードを持つプレイヤー
+     * @param player クリップボードを持つプレイヤー (アップロードした人として記録する)
+     * @param title タイトル (null または空白のみなら記録しない)
      * @return アップロードの結果
      */
-    suspend fun uploadClipboard(player: Player): SchematicUploadResult {
+    suspend fun uploadClipboard(player: Player, title: String?): SchematicUploadResult {
+        val normalizedTitle = normalizeTitle(title) ?: return invalidTitle()
         // WorldEdit の API クラスに触れる前に、Bukkit の API だけで存在を確認する
         if (!isWorldEditEnabled()) {
             return failure(SchematicUploadFailure.WORLDEDIT_UNAVAILABLE, "WorldEdit or FastAsyncWorldEdit is not enabled")
         }
         val service = serviceOrNull() ?: return storageNotConfigured()
         return catchingFailures {
-            val content = WorldEditSchematicExporter().exportClipboard(player)
-            if (content == null) {
-                failure(SchematicUploadFailure.EMPTY_CLIPBOARD, "Clipboard of ${player.name} is empty")
-            } else {
-                upload(service, content)
-            }
+            val exported = WorldEditSchematicExporter().exportClipboard(player)
+                ?: return@catchingFailures failure(SchematicUploadFailure.EMPTY_CLIPBOARD, "Clipboard of ${player.name} is empty")
+            // 書き出した内容から大きさを読む (WorldEdit が書いた Sponge schematic v3 なので必ず読めるはず)
+            val worldSize = READER.readWorldSize(exported.content)
+                ?: return@catchingFailures failure(SchematicUploadFailure.UPLOAD_FAILED, "Exported clipboard is not readable")
+            val request = SchematicUploadRequest(
+                format = READER.format,
+                content = exported.content,
+                worldSize = worldSize,
+                title = normalizedTitle.value,
+                uploaderName = player.name,
+                uploaderUuid = player.uniqueId,
+                spawnPosition = exported.spawnPosition,
+            )
+            upload(service, request)
         }
     }
 
@@ -56,17 +71,29 @@ class SchematicUploader : MoripaUtilsKoinComponent {
      * Sponge schematic v3 のバイト列をアップロードする
      *
      * 形式の判定は WorldEdit を使わずに行うため、WorldEdit が導入されていなくても使える。
+     * プレイヤーの位置が分からないため、スポーン位置は基準点 ([SchematicSpawnPosition.ORIGIN]) として記録する。
      *
      * @param content Sponge schematic v3 のバイト列
+     * @param title タイトル (null または空白のみなら記録しない)
+     * @param uploaderName アップロードした人として記録する名前 (null なら記録しない)
      * @return アップロードの結果
      */
-    suspend fun uploadSchematic(content: ByteArray): SchematicUploadResult {
+    suspend fun uploadSchematic(content: ByteArray, title: String?, uploaderName: String?): SchematicUploadResult {
+        val normalizedTitle = normalizeTitle(title) ?: return invalidTitle()
         val service = serviceOrNull() ?: return storageNotConfigured()
-        // ストレージに不正なファイルが溜まらないよう、Sponge schematic v3 かどうかを先に確かめる
-        if (!SpongeSchematicV3Format.isValid(content)) {
-            return failure(SchematicUploadFailure.INVALID_SCHEMATIC, "Content is not a Sponge schematic v3")
-        }
-        return catchingFailures { upload(service, content) }
+        // ストレージに不正なファイルが溜まらないよう、Sponge schematic v3 として読めるかを先に確かめる
+        val worldSize = READER.readWorldSize(content)
+            ?: return failure(SchematicUploadFailure.INVALID_SCHEMATIC, "Content is not a Sponge schematic v3")
+        val request = SchematicUploadRequest(
+            format = READER.format,
+            content = content,
+            worldSize = worldSize,
+            title = normalizedTitle.value,
+            uploaderName = uploaderName?.takeIf { it.isNotBlank() },
+            uploaderUuid = null,
+            spawnPosition = SchematicSpawnPosition.ORIGIN,
+        )
+        return catchingFailures { upload(service, request) }
     }
 
     /**
@@ -97,15 +124,37 @@ class SchematicUploader : MoripaUtilsKoinComponent {
      * schematic をアップロードして成功の結果を作る
      *
      * @param service アップロード役
-     * @param content schematic のバイト列
+     * @param request アップロードする schematic と情報
      * @return 成功の結果
      * @throws party.morino.moripautils.common.storage.ObjectStorageException アップロードに失敗した場合
      */
-    private suspend fun upload(service: SchematicUploadService, content: ByteArray): SchematicUploadResult {
-        val id = service.upload(content)
-        plugin.logger.info("Uploaded schematic $id (${content.size} bytes)")
+    private suspend fun upload(service: SchematicUploadService, request: SchematicUploadRequest): SchematicUploadResult {
+        val id = service.upload(request)
+        plugin.logger.info("Uploaded schematic $id (${request.content.size} bytes) by ${request.uploaderName ?: "unknown"}")
         return SchematicUploadResult.Success(id)
     }
+
+    /**
+     * タイトルの前後の空白を取り除き、長さを確かめる
+     *
+     * @param title 入力されたタイトル
+     * @return 整えたタイトル (空なら値が null)。長すぎる場合は null
+     */
+    private fun normalizeTitle(title: String?): NormalizedTitle? {
+        val trimmed = title?.trim()?.takeIf { it.isNotEmpty() }
+        if (trimmed != null && trimmed.length > SchematicInfo.MAX_TITLE_LENGTH) return null
+        return NormalizedTitle(trimmed)
+    }
+
+    /**
+     * タイトルが長すぎることを表す失敗の結果を作る
+     *
+     * @return 失敗の結果
+     */
+    private fun invalidTitle(): SchematicUploadResult = failure(
+        SchematicUploadFailure.INVALID_TITLE,
+        "title must be at most ${SchematicInfo.MAX_TITLE_LENGTH} characters",
+    )
 
     /**
      * アップロード役を取得する
@@ -141,7 +190,18 @@ class SchematicUploader : MoripaUtilsKoinComponent {
     private fun failure(reason: SchematicUploadFailure, message: String): SchematicUploadResult =
         SchematicUploadResult.Failure(reason, message)
 
+    /**
+     * 整えたタイトル (空のタイトルと「長すぎて不正」を区別するために包む)
+     *
+     * @property value タイトル。指定されなかった場合は null
+     */
+    @JvmInline
+    private value class NormalizedTitle(val value: String?)
+
     companion object {
+        /** アップロードする形式の読み取り役 (現在は Sponge schematic v3 のみ) */
+        private val READER: SchematicFormatReader = SpongeSchematicV3Format
+
         /** WorldEdit の API を提供するプラグインの名前 (FAWE は FastAsyncWorldEdit という名前で動作する) */
         private val WORLDEDIT_PLUGIN_NAMES: List<String> = listOf("WorldEdit", "FastAsyncWorldEdit")
     }

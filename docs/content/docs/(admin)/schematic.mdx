@@ -7,7 +7,7 @@ icon: Box
 # Schematic
 
 Schematic は、WorldEdit または FastAsyncWorldEdit (FAWE) のクリップボードを schematic ファイルとして S3 互換ストレージへアップロードする機能です。
-アップロードした schematic には ID (UUID v7) が割り当てられ、ストレージ上ではこの ID からファイルの場所が決まります。
+アップロードした schematic には ID (UUID v7) が割り当てられ、ストレージ上ではこの ID ごとのディレクトリに schematic 本体と情報ファイル (`info.json`) が保存されます。
 ゲーム内のコマンドのほか、他のプラグインから公開 API を通じて使用することもできます。
 
 <Callout type="info">
@@ -31,27 +31,96 @@ WorldEdit と FAWE はどちらも任意の依存関係です。
 
 | コマンド | 権限 | 説明 |
 |---------|------|------|
-| `/mu schematic upload` | `moripautils.schematic.upload` (デフォルトは OP のみ) | 実行したプレイヤーのクリップボードをアップロードし、ID を表示します。 |
+| `/mu schematic upload [タイトル]` | `moripautils.schematic.upload` (デフォルトは OP のみ) | 実行したプレイヤーのクリップボードをアップロードし、ID を表示します。 |
 
 `//copy` などでクリップボードに範囲をコピーしてから実行します。
+タイトルは省略でき、空白を含めて最大 100 文字まで指定できます (例: `/mu schematic upload ロビーの噴水`)。
+実行した時点のプレイヤーの位置と向きが、schematic を使うときのスポーン位置として記録されます。
 `//rotate` や `//flip` で設定した回転や反転は、クリップボードに反映した状態で保存されます。
 アップロードに成功すると、チャットに ID が表示されます。ID をクリックするとクリップボードにコピーできます。
 コンソールからは実行できません。
 
 ## 保存形式
 
-schematic は Sponge Schematic v3 形式 (拡張子 `.schem`) で保存されます。
-この形式は WorldEdit 7.3 以降と FAWE の `//schem load` で読み込めます。
-
-ストレージ上のキーは次の形式です。
+schematic ごとに ID のディレクトリが作られ、schematic 本体と情報ファイルが保存されます。
 
 ```text
-schematics/<ID>.schem
+schematics/<ID>/schematic.schem
+schematics/<ID>/info.json
 ```
 
-例えば ID が `0199c8a0-7b3e-7f12-9a4c-1d2e3f405162` の場合、`schematics/0199c8a0-7b3e-7f12-9a4c-1d2e3f405162.schem` に保存されます。
-
 ID は UUID v7 です。先頭の 48 bit にアップロードした時刻 (ミリ秒単位の Unix 時刻) が含まれ、同じミリ秒内でも単調に増加するため、ID を並べ替えるとアップロード順になります。
+`info.json` は schematic 本体の保存に成功した後に書き込まれるため、`info.json` が存在する場合は schematic 本体も存在します。
+
+### schematic 本体
+
+schematic 本体は Sponge Schematic v3 形式で保存されます。
+この形式は WorldEdit 7.3 以降と FAWE の `//schem load` で読み込めます。
+Sponge Schematic v3 には、範囲の大きさ (`Width` / `Height` / `Length`) と、貼り付けの基準点からの範囲の位置 (`Offset`) が含まれます。
+WorldEdit で書き出した場合は、`//copy` を実行したときの基準点のワールド座標も `Metadata.WorldEdit.Origin` に記録されます。
+
+| 貼り付け方 | 配置される位置 |
+|-----------|---------------|
+| `//schem load` の後に `//paste` | 実行したプレイヤーの位置を基準点として、コピーしたときと同じ位置関係で配置されます。 |
+| `//schem load` の後に `//paste -o` | コピー元のワールド座標に配置されます。 |
+| [hollow-cube/schem](https://github.com/hollow-cube/schem) の `forEachBlock` | ブロックの位置が基準点からの相対位置 (`Offset` を含む) で渡されます。貼り付け位置に足して配置します。 |
+
+### info.json
+
+`info.json` には次の情報が保存されます。キーは snake_case です。
+
+| キー | 説明 |
+|------|------|
+| `id` | schematic の ID です。 |
+| `format` | schematic 本体の形式です。現在は `sponge_v3` のみです。 |
+| `file_name` | 同じディレクトリにある schematic 本体のファイル名です。`sponge_v3` では `schematic.schem` です。 |
+| `file_size` | schematic 本体のファイルサイズ (バイト) です。 |
+| `title` | タイトルです。指定されなかった場合は `null` です。 |
+| `uploader_name` | アップロードしたプレイヤーの名前です。分からない場合は `null` です。 |
+| `uploader_uuid` | アップロードしたプレイヤーの UUID です。分からない場合は `null` です。 |
+| `server` | アップロードしたサーバーです (`config.conf` の `server`)。 |
+| `spawn_position` | schematic を使うときのスポーン位置 (`x` / `y` / `z` / `yaw` / `pitch`) です。 |
+| `world_size` | schematic の範囲の大きさ (`width` / `height` / `length`) です。 |
+| `uploaded_at` | アップロードした日時 (ISO 8601、UTC) です。 |
+
+```json
+{
+    "id": "0199c8a0-7b3e-7f12-9a4c-1d2e3f405162",
+    "format": "sponge_v3",
+    "file_name": "schematic.schem",
+    "file_size": 18234,
+    "title": "ロビーの噴水",
+    "uploader_name": "Steve",
+    "uploader_uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+    "server": "main",
+    "spawn_position": {
+        "x": 2.5,
+        "y": 1.0,
+        "z": -3.5,
+        "yaw": 90.0,
+        "pitch": 0.0
+    },
+    "world_size": {
+        "width": 12,
+        "height": 8,
+        "length": 15
+    },
+    "uploaded_at": "2026-10-09T11:30:00.123Z"
+}
+```
+
+`format` と `file_name` は、今後 Litematica などの形式に対応したときに形式ごとに変わります。
+schematic 本体を読む場合は、ファイル名を決め打ちせずに `file_name` を参照してください。
+
+### スポーン位置
+
+`spawn_position` の `x` / `y` / `z` は、schematic の貼り付けの基準点からの相対位置です。
+schematic を貼り付けた位置に `x` / `y` / `z` を足すと、ワールド上のスポーン位置になります。
+hollow-cube/schem で貼り付ける場合は、`forEachBlock` で渡される位置と同じ基準になります。
+
+`/mu schematic upload` では、実行した時点のプレイヤーの位置と向きが記録されます。
+`//rotate` や `//flip` で変形している場合、位置には同じ変形が反映されますが、向き (`yaw`) には反映されません。
+公開 API の `uploadSchematic` でバイト列をアップロードした場合は、プレイヤーの位置が分からないため、すべて `0` (基準点、向き 0) になります。
 
 ## 公開 API
 
@@ -60,8 +129,8 @@ API は MoripaUtils の有効化後に使用できるため、`plugin.yml` な�
 
 | メソッド | 説明 |
 |---------|------|
-| `uploadClipboard(player: Player)` | プレイヤーの WorldEdit / FAWE のクリップボードをアップロードします。 |
-| `uploadSchematic(content: ByteArray)` | Sponge Schematic v3 形式のバイト列をそのままアップロードします。Sponge Schematic v3 でない内容 (v1 / v2 や gzip 圧縮されていないもの) は拒否されます。WorldEdit / FAWE が導入されていなくても使用できます。 |
+| `uploadClipboard(player: Player, title: String?)` | プレイヤーの WorldEdit / FAWE のクリップボードをアップロードします。プレイヤーの名前・UUID・位置も記録されます。 |
+| `uploadSchematic(content: ByteArray, title: String?, uploaderName: String?)` | Sponge Schematic v3 形式のバイト列をそのままアップロードします。Sponge Schematic v3 でない内容 (v1 / v2 や gzip 圧縮されていないもの) は拒否されます。WorldEdit / FAWE が導入されていなくても使用できます。 |
 
 どちらのメソッドも `CompletableFuture<UUID>` を返し、アップロードに成功すると ID で完了します。
 失敗した場合は `SchematicUploadException` で完了し、`reason` プロパティで理由を確認できます。
@@ -72,11 +141,12 @@ API は MoripaUtils の有効化後に使用できるため、`plugin.yml` な�
 | `STORAGE_NOT_CONFIGURED` | `config.conf` の `storage` が設定されていません。 |
 | `EMPTY_CLIPBOARD` | プレイヤーのクリップボードが空です。 |
 | `INVALID_SCHEMATIC` | 渡された内容が Sponge Schematic v3 として読み込めません。 |
+| `INVALID_TITLE` | タイトルが 100 文字を超えています。 |
 | `UPLOAD_FAILED` | schematic の書き出し、またはストレージへの保存に失敗しました。詳細はサーバーのログに出力されます。 |
 
 ```kotlin
 val api = MoripaUtilsAPI.getInstance()
-api.schematic.uploadClipboard(player).whenComplete { id, error ->
+api.schematic.uploadClipboard(player, "ロビーの噴水").whenComplete { id, error ->
     if (error != null) {
         // 失敗した理由に応じて処理する
         return@whenComplete

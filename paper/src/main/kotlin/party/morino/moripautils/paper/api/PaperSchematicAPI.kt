@@ -27,13 +27,14 @@ import java.util.concurrent.CompletableFuture
  * 再読み込みのたびに Koin コンテナが作り直されるため、アップロード役は呼び出しのたびにコンテナから取り出す。
  */
 class PaperSchematicAPI : SchematicAPI {
-    override fun uploadClipboard(player: Player): CompletableFuture<UUID> = runUpload { uploader ->
-        uploader.uploadClipboard(player)
+    override fun uploadClipboard(player: Player, title: String?): CompletableFuture<UUID> = runUpload { uploader ->
+        uploader.uploadClipboard(player, title)
     }
 
-    override fun uploadSchematic(content: ByteArray): CompletableFuture<UUID> = runUpload { uploader ->
-        uploader.uploadSchematic(content)
-    }
+    override fun uploadSchematic(content: ByteArray, title: String?, uploaderName: String?): CompletableFuture<UUID> =
+        runUpload { uploader ->
+            uploader.uploadSchematic(content, title, uploaderName)
+        }
 
     /**
      * プラグインのコルーチンスコープでアップロードを行い、結果を Future に変換する
