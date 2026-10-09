@@ -1,0 +1,7 @@
+{
+    "title": "プレイヤー向け",
+    "root": true,
+    "icon": "Users",
+    "description": "サーバーで遊ぶプレイヤーのための使い方ガイド",
+    "pages": ["---はじめに---", "index", "---機能---", "ticket"]
+}

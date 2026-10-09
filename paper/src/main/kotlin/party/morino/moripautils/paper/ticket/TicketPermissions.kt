@@ -16,9 +16,6 @@ object TicketPermissions {
     /** /ticket でお問い合わせを送信する権限 */
     const val USE: String = "moripautils.ticket.use"
 
-    /** 新しいチケットやプレイヤーからのコメントの通知を受け取る権限 */
-    const val NOTIFY: String = "moripautils.ticket.notify"
-
-    /** すべてのチケットの閲覧やコメントを行うスタッフ向けの権限 */
+    /** すべてのチケットの閲覧やコメント、新しいチケットなどの通知の受け取りを行うスタッフ向けの権限 */
     const val STAFF: String = "moripautils.ticket.staff"
 }

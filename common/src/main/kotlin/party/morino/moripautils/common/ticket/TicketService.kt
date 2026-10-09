@@ -250,6 +250,13 @@ class TicketService(
         commentRepository.listRecent(ticketId, limit)
 
     /**
+     * 未対応 (オープン) のチケットの件数を数える (運営の参加時に表示する)
+     *
+     * @return 未対応のチケットの件数
+     */
+    suspend fun countOpenTickets(): Long = repository.countByStatus(TicketStatus.OPEN)
+
+    /**
      * 登録されているすべての通知先へ新しいチケットの通知を開始する (完了は待たない)
      *
      * @param ticket 保存されたチケット

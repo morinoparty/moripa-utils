@@ -14,4 +14,6 @@ steps:
   - { on: Alice, action: assert_no_log, pattern: "\\[CHAT\\] .*(Unknown or incomplete command|現在お問い合わせを受け付けていません|permission)" }
   # fukurou には Dialog の表示を直接確かめる手段が無いため、スクリーンショットで目視できるようにする
   - { on: Alice, action: screenshot, name: ticket-dialog }
-  - { on: Alice, action: press_key, key: Escape }
+  # Escape では Dialog が閉じきらず次のテストの入力を奪うことがあるため、サーバーから確実に閉じる
+  # (fukurou のテスト間のリセットはサーバーが開いた Dialog までは閉じない)
+  - { on: server, action: command, command: "dialog clear Alice" }
