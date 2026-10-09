@@ -16,6 +16,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import party.morino.moripautils.paper.MoripaUtils
 import party.morino.moripautils.paper.observability.metrics.MetricsSampler
+import party.morino.moripautils.paper.schematic.SchematicUploader
 
 /**
  * Paper 固有の Koin モジュールを生成するファクトリ
@@ -27,7 +28,7 @@ object PaperModule {
      * Paper モジュールを生成する
      *
      * @param plugin 有効化中のプラグインインスタンス
-     * @return プラグイン / Bukkit サーバー / コマンドマネージャー / サンプラーをシングルトンとして提供する Koin モジュール
+     * @return プラグイン / Bukkit サーバー / コマンドマネージャー / サンプラー / schematic のアップロード役をシングルトンとして提供する Koin モジュール
      */
     fun create(plugin: MoripaUtils): Module = module {
         // プラグイン本体 (ロガーやコルーチンの起動に使う)
@@ -40,5 +41,7 @@ object PaperModule {
         }
         // メインスレッド上で定期的にサンプリングを行うサンプラー
         single { MetricsSampler() }
+        // schematic のアップロードの入口 (WorldEdit / ストレージの有無は実行時に判定するため常に登録する)
+        single { SchematicUploader() }
     }
 }

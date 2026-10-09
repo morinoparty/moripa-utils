@@ -9,14 +9,35 @@
 
 package party.morino.moripautils.api
 
+import party.morino.moripautils.api.schematic.SchematicAPI
+
+/**
+ * 外部プラグイン向けの MoripaUtils の公開 API
+ *
+ * MoripaUtils の有効化後に [getInstance] で取得する。
+ */
 interface MoripaUtilsAPI {
+    /** schematic のアップロード (schematic 機能) の API */
+    val schematic: SchematicAPI
+
     companion object {
         private var instance: MoripaUtilsAPI? = null
 
+        /**
+         * 公開 API を取得する
+         *
+         * @return MoripaUtils の公開 API
+         * @throws IllegalStateException MoripaUtils がまだ有効化されていない場合
+         */
         fun getInstance(): MoripaUtilsAPI {
             return checkNotNull(instance) { "MoripaUtilsAPI is not initialized" }
         }
 
+        /**
+         * 公開 API の実装を設定する (MoripaUtils 本体が有効化時に呼ぶ)
+         *
+         * @param api 公開 API の実装
+         */
         fun setInstance(api: MoripaUtilsAPI) {
             instance = api
         }

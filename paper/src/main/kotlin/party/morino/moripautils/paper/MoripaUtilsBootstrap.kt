@@ -19,6 +19,7 @@ import org.incendo.cloud.paper.PaperCommandManager
 import party.morino.moripautils.common.config.MoripaUtilsConfigLoader
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.paper.reload.command.ReloadCommandRegistrar
+import party.morino.moripautils.paper.schematic.command.SchematicCommandRegistrar
 import party.morino.moripautils.paper.ticket.command.TicketCommandRegistrar
 import java.io.IOException
 
@@ -48,6 +49,8 @@ class MoripaUtilsBootstrap : PluginBootstrap {
         commandManager = manager
         // /mu reload はどの機能にも属さないため、config.conf の内容に関係なく登録する
         ReloadCommandRegistrar.register(manager)
+        // /mu schematic upload は WorldEdit やストレージの有無が実行時に変わりうるため、常に登録して実行時に判定する
+        SchematicCommandRegistrar.register(manager)
 
         val config = loadConfigOrNull(context) ?: return
         // 無効な機能のコマンドは登録しない
