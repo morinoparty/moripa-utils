@@ -261,7 +261,7 @@ class MoripaUtils @Inject constructor(
             logger.info("No announcement messages found in {}", directory)
             return
         }
-        get<AnnouncementBroadcaster>().start(messages, config.interval)
+        get<AnnouncementBroadcaster>().start(messages, config)
         logger.info("Broadcasting {} announcement messages every {}", messages.size, config.interval)
     }
 

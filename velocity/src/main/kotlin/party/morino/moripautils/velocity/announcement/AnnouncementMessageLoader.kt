@@ -9,7 +9,9 @@
 
 package party.morino.moripautils.velocity.announcement
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNamingStrategy
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.minimessage.MiniMessage
@@ -73,7 +75,7 @@ class AnnouncementMessageLoader(
             logger.warn("Skipped announcement message {} because it is invalid: {}", file.fileName, e.message)
             return null
         }
-        return AnnouncementMessage(file.nameWithoutExtension, render(messageFile.lines))
+        return AnnouncementMessage(file.nameWithoutExtension, render(messageFile.messageText))
     }
 
     /**
@@ -89,8 +91,15 @@ class AnnouncementMessageLoader(
         /** メッセージファイルとして読み込むファイル名のパターン */
         const val GLOB: String = "*.json"
 
-        /** メッセージファイルの読み込みに使う JSON 設定 (書き間違えたキーに気付けるよう、未知のキーはエラーにする) */
-        val json: Json = Json
+        /**
+         * メッセージファイルの読み込みに使う JSON 設定
+         *
+         * キーは snake_case で書く。書き間違えたキーに気付けるよう、未知のキーはエラーにする。
+         */
+        @OptIn(ExperimentalSerializationApi::class)
+        val json: Json = Json {
+            namingStrategy = JsonNamingStrategy.SnakeCase
+        }
 
         /** 行の変換に使う MiniMessage */
         val miniMessage: MiniMessage = MiniMessage.miniMessage()

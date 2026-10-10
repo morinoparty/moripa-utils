@@ -21,16 +21,23 @@ import kotlin.time.Duration.Companion.seconds
  *
  * @property enabled お知らせを送るかどうか
  * @property interval お知らせを 1 件ずつ送る間隔 (HOCON の期間の書式。例: "30 minutes")。1 秒未満を指定すると設定の読み込み時に失敗する
- * @throws IllegalArgumentException interval が 1 秒未満の場合
+ * @property startupDelay プロキシの起動や再読み込みから最初のお知らせを送るまでの時間。負の値を指定すると設定の読み込み時に失敗する
+ * @property randomOrder true の場合はお知らせをランダムな順番で送り、false の場合はファイル名の順に送る
+ * @property permission お知らせを受け取るのに必要な権限。空文字の場合は全プレイヤーが受け取る
+ * @throws IllegalArgumentException interval が 1 秒未満、または startupDelay が負の場合
  */
 @Serializable
 data class AnnouncementConfig(
     val enabled: Boolean = true,
     val interval: Duration = DEFAULT_INTERVAL,
+    val startupDelay: Duration = Duration.ZERO,
+    val randomOrder: Boolean = false,
+    val permission: String = "",
 ) {
     init {
         // 短すぎる間隔はチャットを埋めてしまうため、設定の読み込み時に失敗させる (0 以下はスケジューラーにも渡せない)
         require(interval >= MIN_INTERVAL) { "announcement.interval must be at least $MIN_INTERVAL, but was $interval" }
+        require(!startupDelay.isNegative()) { "announcement.startupDelay must not be negative, but was $startupDelay" }
     }
 
     companion object {

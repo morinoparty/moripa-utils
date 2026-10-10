@@ -53,6 +53,9 @@ Paper で生成されるデフォルトの `config.conf` は以下のとおり�
 announcement {
     enabled=true
     interval="30 m"
+    permission=""
+    randomOrder=false
+    startupDelay="0 d"
 }
 database {
     mysql {
@@ -243,6 +246,9 @@ ticket {
 |------|-----------|------|
 | `announcement.enabled` | `true` | お知らせを送るかどうかです。 |
 | `announcement.interval` | `"30 m"` (30 分) | お知らせを 1 件ずつ送る間隔です。HOCON の期間の書式 (`"30 minutes"`、`"1 h"` など) で指定し、1 秒以上である必要があります。 |
+| `announcement.startupDelay` | `"0 d"` (0 秒) | プロキシの起動や設定の再読み込みから、最初のお知らせを送るまでの時間です。 |
+| `announcement.randomOrder` | `false` | お知らせをランダムな順番で送るかどうかです。 |
+| `announcement.permission` | `""` | お知らせを受け取るのに必要な権限です。空文字の場合は全プレイヤーが受け取ります。 |
 
 送るメッセージは `config.conf` ではなく、メッセージファイルに記述します。詳しくは [お知らせ](/docs/announcement) を参照してください。
 

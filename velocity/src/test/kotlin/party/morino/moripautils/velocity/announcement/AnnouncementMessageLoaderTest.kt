@@ -45,8 +45,8 @@ class AnnouncementMessageLoaderTest {
     fun loadsInFileNameOrder() {
         val directory = tempDir.resolve("message")
         Files.createDirectories(directory)
-        Files.writeString(directory.resolve("vote.json"), """{"lines": ["<bold>投票", "<gray>JMS"]}""")
-        Files.writeString(directory.resolve("discord.json"), """{"lines": ["Discord"]}""")
+        Files.writeString(directory.resolve("vote.json"), """{"${'$'}schema": "https://utils.plugin.morino.party/schemas/announcement-message.json", "message_text": ["<bold>投票", "<gray>JMS"]}""")
+        Files.writeString(directory.resolve("discord.json"), """{"message_text": ["Discord"]}""")
         // json 以外のファイルは読み込まない
         Files.writeString(directory.resolve("memo.txt"), "memo")
 
@@ -63,10 +63,10 @@ class AnnouncementMessageLoaderTest {
     fun skipsInvalidFiles() {
         val directory = tempDir.resolve("message")
         Files.createDirectories(directory)
-        Files.writeString(directory.resolve("broken.json"), """{"lines": [""")
-        Files.writeString(directory.resolve("empty.json"), """{"lines": []}""")
-        Files.writeString(directory.resolve("typo.json"), """{"line": ["typo"]}""")
-        Files.writeString(directory.resolve("valid.json"), """{"lines": ["ok"]}""")
+        Files.writeString(directory.resolve("broken.json"), """{"message_text": [""")
+        Files.writeString(directory.resolve("empty.json"), """{"message_text": []}""")
+        Files.writeString(directory.resolve("typo.json"), """{"message-text": ["typo"]}""")
+        Files.writeString(directory.resolve("valid.json"), """{"message_text": ["ok"]}""")
 
         val messages = AnnouncementMessageLoader(directory).load()
 
