@@ -25,7 +25,6 @@ import org.koin.core.component.get
 import org.slf4j.Logger
 import party.morino.moripautils.common.BuildConstants
 import party.morino.moripautils.common.MoripaUtilsCommon
-import party.morino.moripautils.common.classloader.PluginJarPin
 import party.morino.moripautils.common.config.MoripaUtilsConfigLoader
 import party.morino.moripautils.common.di.CommonModule
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
@@ -80,24 +79,9 @@ class MoripaUtils @Inject constructor(
     /** 登録中の接続イベントのリスナー (再読み込み時に解除するため保持する。observability が無効なら null) */
     private var connectionEventListener: ConnectionEventListener? = null
 
-    /**
-     * プラグインの JAR を開いてキャッシュに載せる ([PluginJarPin])
-     *
-     * 失敗してもプラグインは動作するため、警告を出して続行する。
-     */
-    private fun pinPluginJar() {
-        try {
-            PluginJarPin.pin(javaClass)
-        } catch (e: IOException) {
-            logger.warn("Failed to pin the plugin jar; replacing it while running may break the plugin: {}", e.message)
-        }
-    }
-
     @Subscribe
     @Suppress("UnusedParameter")
     fun onProxyInitialization(event: ProxyInitializeEvent) {
-        // 稼働中に JAR を削除・置き換えされてもリソースを読めるよう、最初に JAR を開いておく
-        pinPluginJar()
         val config = createConfigLoader().load()
         setupKoin(config)
         MoripaUtilsCommon.init()
