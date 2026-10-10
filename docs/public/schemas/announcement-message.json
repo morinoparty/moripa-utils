@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://utils.plugin.morino.party/schemas/announcement-message.json",
+    "title": "MoripaUtils announcement message",
+    "description": "plugins/moripa-utils/message/<title>.json read by MoripaUtils on Velocity and broadcast to players periodically.",
+    "type": "object",
+    "required": [
+        "message_text"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "$schema": {
+            "description": "URL of this JSON Schema for editor completion. Ignored by MoripaUtils.",
+            "type": "string"
+        },
+        "message_text": {
+            "description": "Lines sent to the chat in MiniMessage format. Lines are joined with newlines and sent as one message.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+}

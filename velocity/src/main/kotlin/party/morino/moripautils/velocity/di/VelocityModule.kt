@@ -14,6 +14,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import org.slf4j.Logger
 import party.morino.moripautils.velocity.MoripaUtils
+import party.morino.moripautils.velocity.announcement.AnnouncementBroadcaster
 
 /**
  * Velocity 固有の Koin モジュールを生成するファクトリ
@@ -25,12 +26,14 @@ object VelocityModule {
      * @param plugin Guice が生成したプラグイン本体
      * @param server Guice から注入されたプロキシサーバー
      * @param logger Guice から注入されたプラグイン用ロガー
-     * @return プラグイン / プロキシ / ロガーをシングルトンとして提供する Koin モジュール
+     * @return プラグイン / プロキシ / ロガーと、お知らせの送信をシングルトンとして提供する Koin モジュール
      */
     fun create(plugin: MoripaUtils, server: ProxyServer, logger: Logger): Module = module {
         // Guice が生成した各インスタンスをそのまま Koin から取り出せるようにする
         single<MoripaUtils> { plugin }
         single<ProxyServer> { server }
         single<Logger> { logger }
+        // 再読み込み時に停止できるよう、お知らせの送信はコンテナで 1 つだけ持つ
+        single<AnnouncementBroadcaster> { AnnouncementBroadcaster() }
     }
 }

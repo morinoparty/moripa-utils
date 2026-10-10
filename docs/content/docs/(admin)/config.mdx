@@ -50,6 +50,13 @@ Paper で生成されるデフォルトの `config.conf` は以下のとおり�
 ```text
 # MoripaUtils configuration (HOCON)
 # https://utils.plugin.morino.party/docs/config
+announcement {
+    enabled=true
+    interval="30 m"
+    permission=""
+    randomOrder=false
+    startupDelay="0 d"
+}
 database {
     mysql {
         database="moripa_utils"
@@ -120,6 +127,7 @@ ticket {
 
 Velocity では、`server` のデフォルト値が `proxy`、`observability.http.port` のデフォルト値が `9226` になります。
 チケット機能、データベース、ストレージは Paper 専用のため、`ticket` ブロック、`database` ブロック、`storage` ブロックは Velocity では使用されません (値の検証は行われます)。
+同様に、お知らせは Velocity 専用のため、`announcement` ブロックは Paper では使用されません。
 
 ## 共通の項目
 
@@ -228,6 +236,21 @@ ticket {
     ]
 }
 ```
+
+## announcement
+
+`announcement` ブロックでは、プロキシに接続している全プレイヤーへ定期的にお知らせを送る機能を設定します。
+この機能は Velocity でのみ動作します。
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `announcement.enabled` | `true` | お知らせを送るかどうかです。 |
+| `announcement.interval` | `"30 m"` (30 分) | お知らせを 1 件ずつ送る間隔です。HOCON の期間の書式 (`"30 minutes"`、`"1 h"` など) で指定し、1 秒以上である必要があります。 |
+| `announcement.startupDelay` | `"0 d"` (0 秒) | プロキシの起動や設定の再読み込みから、最初のお知らせを送るまでの時間です。 |
+| `announcement.randomOrder` | `false` | お知らせをランダムな順番で送るかどうかです。 |
+| `announcement.permission` | `""` | お知らせを受け取るのに必要な権限です。空文字の場合は全プレイヤーが受け取ります。 |
+
+送るメッセージは `config.conf` ではなく、メッセージファイルに記述します。詳しくは [お知らせ](/docs/announcement) を参照してください。
 
 ## 設定の検証
 

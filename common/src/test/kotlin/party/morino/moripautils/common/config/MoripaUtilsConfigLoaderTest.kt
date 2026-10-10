@@ -23,6 +23,7 @@ import party.morino.moripautils.common.model.config.ObservabilityConfig
 import party.morino.moripautils.common.model.config.TicketCategory
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.minutes
 
 class MoripaUtilsConfigLoaderTest {
 
@@ -167,5 +168,29 @@ class MoripaUtilsConfigLoaderTest {
         // init ブロックの例外はローダーが設定ファイルのパス付き IllegalStateException に包み直す
         val exception = assertThrows(IllegalStateException::class.java) { loader.load() }
         assertTrue(exception.message!!.contains(MoripaUtilsConfigLoader.CONFIG_FILE_NAME), exception.message)
+    }
+
+    @Test
+    @DisplayName("Parses announcement interval as HOCON duration")
+    fun parsesAnnouncementInterval() {
+        val loader = loaderWith(
+            """
+            announcement { interval = 10 minutes }
+            """.trimIndent(),
+        )
+
+        assertEquals(10.minutes, loader.load().announcement.interval)
+    }
+
+    @Test
+    @DisplayName("Rejects too short announcement interval")
+    fun rejectsTooShortAnnouncementInterval() {
+        val loader = loaderWith(
+            """
+            announcement { interval = 500 milliseconds }
+            """.trimIndent(),
+        )
+
+        assertThrows(IllegalStateException::class.java) { loader.load() }
     }
 }

@@ -1,0 +1,76 @@
+---
+title: お知らせ
+description: Velocity で、プロキシに接続しているプレイヤーへ定期的にお知らせを送る機能
+icon: Megaphone
+---
+
+# お知らせ
+
+お知らせは、プロキシに接続しているプレイヤーへ、あらかじめ用意したメッセージを一定の間隔で 1 件ずつチャットに送る機能です。
+メッセージは 1 件につき 1 つの JSON ファイルとして用意します。
+すべてのメッセージを送ると最初に戻り、繰り返し送ります。
+
+<Callout type="info">
+この機能は Velocity でのみ動作します。
+</Callout>
+
+## 設定
+
+送る間隔などは `config.conf` の `announcement` ブロックで設定します。
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `announcement.enabled` | `true` | お知らせを送るかどうかです。 |
+| `announcement.interval` | `"30 m"` (30 分) | お知らせを 1 件ずつ送る間隔です。HOCON の期間の書式 (`"30 minutes"`、`"1 h"` など) で指定します。1 秒未満を指定すると、設定ファイルの読み込み時にエラーになります。 |
+| `announcement.startupDelay` | `"0 d"` (0 秒) | プロキシの起動や設定の再読み込みから、最初のお知らせを送るまでの時間です。書式は `announcement.interval` と同じです。 |
+| `announcement.randomOrder` | `false` | `true` の場合はランダムな順番で送ります。1 周の中で同じメッセージは繰り返しません。`false` の場合はファイル名の順に送ります。 |
+| `announcement.permission` | `""` | お知らせを受け取るのに必要な権限です。空文字の場合は全プレイヤーが受け取ります。 |
+
+```text
+announcement {
+    interval = 15 minutes
+    permission = "moripautils.announcement.receive"
+}
+```
+
+Velocity には権限のデフォルト値がないため、`announcement.permission` を指定する場合は LuckPerms などの権限プラグインで権限を付与してください。
+
+## メッセージファイル
+
+メッセージは `plugins/moripa-utils/message/` ディレクトリに `<タイトル>.json` という名前で配置します。
+ディレクトリが存在しない場合は、プロキシの起動時に自動的に作成されます。
+ファイル名の順 (文字コード順) に送られるため、順番を決めたい場合は `01-vote.json` のようにファイル名の先頭に番号を付けてください。
+
+`message_text` に、チャットへ送る行を [MiniMessage](https://docs.advntr.dev/minimessage/format.html) 形式で記述します。
+複数の行は改行でつながり、1 つのメッセージとして送られます。
+
+```json title="plugins/moripa-utils/message/01-vote.json"
+{
+  "$schema": "https://utils.plugin.morino.party/schemas/announcement-message.json",
+  "message_text": [
+    "  <#FFEE58><bold>もりぱに投票してみませんか??</bold>",
+    "    <#CFD8DC>投票するとギフトがもらえる!!",
+    "    <#64B5F6><u><click:open_url:'https://minecraft.jp/servers/visit.morino.party'><hover:show_text:'クリックしてJapanMinecraftServersを開く'>JMS</hover></click></u></#64B5F6><#CFD8DC>から投票しよう！</#CFD8DC>"
+  ]
+}
+```
+
+| キー | 説明 |
+|------|------|
+| `message_text` | チャットへ送る行の配列です。1 行以上を指定する必要があります。 |
+| `$schema` | 省略できます。[JSON Schema](/schemas/announcement-message.json) の URL を指定すると、対応するエディターでキーの補完や検証が行われます。プラグインはこの値を使用しません。 |
+
+JSON の構文が不正なファイル、`message_text` が空のファイル、上記以外のキーを含むファイルは読み込まれず、プロキシのログに警告が出力されます。
+その場合も、残りのメッセージは通常どおり送られます。
+
+## AnnouncerPlus からの移行
+
+AnnouncerPlus の設定ファイルの `messages` の各要素について、`message-text` の内容を `message_text` に移してください。
+`interval-time`、`startup-delay`、`random-message-order` は、それぞれ `announcement.interval`、`announcement.startupDelay`、`announcement.randomOrder` に対応します。
+アクションバー、ボスバー、タイトル、トースト、サウンド、コマンドの実行には対応していません。
+
+## メッセージの更新
+
+メッセージファイルを追加・変更・削除した場合は、`/muv reload` を実行すると反映されます。
+再読み込みすると、最初のメッセージから送り直します。
+コマンドの詳細は [設定ファイル](/docs/config#設定の再読み込み) を参照してください。
