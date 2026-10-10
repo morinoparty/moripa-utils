@@ -33,10 +33,13 @@ import party.morino.moripautils.common.observability.http.MetricsHttpServer
 import party.morino.moripautils.common.observability.metrics.JvmMetricsCollector
 import party.morino.moripautils.common.observability.metrics.MetricsCollector
 import party.morino.moripautils.common.observability.metrics.MetricsExporter
+import party.morino.moripautils.common.model.config.AnnouncementConfig
 import party.morino.moripautils.common.model.config.HttpServerConfig
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.ObservabilityConfig
 import party.morino.moripautils.common.model.reload.ReloadResult
+import party.morino.moripautils.velocity.announcement.AnnouncementBroadcaster
+import party.morino.moripautils.velocity.announcement.AnnouncementMessageLoader
 import party.morino.moripautils.velocity.di.VelocityModule
 import party.morino.moripautils.velocity.reload.command.ReloadCommandRegistrar
 import party.morino.moripautils.velocity.observability.metrics.ConnectionEventListener
@@ -164,7 +167,7 @@ class MoripaUtils @Inject constructor(
     /**
      * 設定で有効化されている機能を起動する
      *
-     * チケット機能は Paper 専用のため、Velocity では observability 機能だけを扱う。
+     * チケット機能は Paper 専用のため、Velocity では observability 機能とお知らせ機能を扱う。
      *
      * @param config 読み込み済みの設定
      */
@@ -173,6 +176,11 @@ class MoripaUtils @Inject constructor(
             startMetricsExporter(config.observability)
         } else {
             logger.info("Observability is disabled in config.conf")
+        }
+        if (config.announcement.enabled) {
+            startAnnouncement(config.announcement)
+        } else {
+            logger.info("Announcement is disabled in config.conf")
         }
     }
 
@@ -186,6 +194,7 @@ class MoripaUtils @Inject constructor(
         connectionEventListener?.let { listener -> server.eventManager.unregisterListener(this, listener) }
         connectionEventListener = null
         MoripaUtilsKoinContext.getOrNull()?.getOrNull<MetricsExporter>()?.stop()
+        MoripaUtilsKoinContext.getOrNull()?.getOrNull<AnnouncementBroadcaster>()?.stop()
     }
 
     /**
@@ -234,6 +243,29 @@ class MoripaUtils @Inject constructor(
     }
 
     /**
+     * message ディレクトリのお知らせを読み込み、定期送信を始める
+     *
+     * メッセージファイルを読み込めなくてもプロキシ自体の動作には影響しないため、エラーログを出すだけで続行する。
+     *
+     * @param config お知らせ機能の設定
+     */
+    private fun startAnnouncement(config: AnnouncementConfig) {
+        val directory = dataDirectory.resolve(ANNOUNCEMENT_DIRECTORY_NAME)
+        val messages = try {
+            AnnouncementMessageLoader(directory).load()
+        } catch (e: IOException) {
+            logger.error("Failed to read announcement messages in {}", directory, e)
+            return
+        }
+        if (messages.isEmpty()) {
+            logger.info("No announcement messages found in {}", directory)
+            return
+        }
+        get<AnnouncementBroadcaster>().start(messages, config.interval)
+        logger.info("Broadcasting {} announcement messages every {}", messages.size, config.interval)
+    }
+
+    /**
      * このプラグイン専用の Koin コンテナを起動する
      *
      * 他プラグインと GlobalContext を共有しないよう、[MoripaUtilsKoinContext] に独立したコンテナを作る。
@@ -249,6 +281,9 @@ class MoripaUtils @Inject constructor(
     }
 
     companion object {
+        /** お知らせのメッセージファイル (<title>.json) を置くディレクトリの名前 */
+        private const val ANNOUNCEMENT_DIRECTORY_NAME = "message"
+
         /**
          * Velocity 向けの既定設定
          *

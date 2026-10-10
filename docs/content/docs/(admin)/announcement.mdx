@@ -1,0 +1,64 @@
+---
+title: お知らせ
+description: Velocity で、プロキシに接続している全プレイヤーへ定期的にお知らせを送る機能
+icon: Megaphone
+---
+
+# お知らせ
+
+お知らせは、プロキシに接続している全プレイヤーへ、あらかじめ用意したメッセージを一定の間隔で 1 件ずつ送る機能です。
+メッセージは 1 件につき 1 つの JSON ファイルとして用意します。
+最後のメッセージまで送ると先頭に戻り、繰り返し送ります。
+
+<Callout type="info">
+この機能は Velocity でのみ動作します。
+</Callout>
+
+## 設定
+
+送る間隔などは `config.conf` の `announcement` ブロックで設定します。
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `announcement.enabled` | `true` | お知らせを送るかどうかです。 |
+| `announcement.interval` | `"30 m"` (30 分) | お知らせを 1 件ずつ送る間隔です。HOCON の期間の書式 (`"30 minutes"`、`"1 h"` など) で指定します。1 秒未満を指定すると、設定ファイルの読み込み時にエラーになります。 |
+
+```text
+announcement {
+    interval = 15 minutes
+}
+```
+
+プロキシの起動直後や設定の再読み込みの直後はメッセージを送らず、`announcement.interval` が経過してから最初のメッセージを送ります。
+
+## メッセージファイル
+
+メッセージは `plugins/moripa-utils/message/` ディレクトリに `<タイトル>.json` という名前で配置します。
+ディレクトリが存在しない場合は、プロキシの起動時に自動的に作成されます。
+メッセージはファイル名の順 (文字コード順) に送られるため、順番を決めたい場合は `01-vote.json` のようにファイル名の先頭に番号を付けてください。
+
+各ファイルには、`lines` にチャットへ送る行を [MiniMessage](https://docs.advntr.dev/minimessage/format.html) 形式で記述します。
+複数の行は改行でつながり、1 つのメッセージとして送られます。
+
+```json title="plugins/moripa-utils/message/vote.json"
+{
+  "lines": [
+    "  <#FFEE58><bold>もりぱに投票してみませんか??</bold>",
+    "    <#CFD8DC>投票するとギフトがもらえる!!",
+    "    <#64B5F6><u><click:open_url:'https://minecraft.jp/servers/visit.morino.party'><hover:show_text:'クリックしてJapanMinecraftServersを開く'>JMS</hover></click></u></#64B5F6><#CFD8DC>から投票しよう！</#CFD8DC>"
+  ]
+}
+```
+
+| キー | 説明 |
+|------|------|
+| `lines` | チャットへ送る行の配列です。1 行以上を指定する必要があります。 |
+
+JSON の構文が不正なファイル、`lines` が空のファイル、`lines` 以外のキーを含むファイルは読み込まれず、プロキシのログに警告が出力されます。
+その場合も、残りのメッセージは通常どおり送られます。
+
+## メッセージの更新
+
+メッセージファイルを追加・変更・削除した場合は、`/muv reload` を実行すると反映されます。
+再読み込みすると、送る順番は先頭のメッセージに戻ります。
+コマンドの詳細は [設定ファイル](/docs/config#設定の再読み込み) を参照してください。
