@@ -29,9 +29,11 @@ dependencies {
     implementation(libs.bundles.commands.velocity)
 
     // compileOnly
-    compileOnly(libs.kotlinx.serialization.json)
+    // Kotlin の標準ライブラリと kotlinx-serialization は JAR に同梱する
+    // (他のプラグインから借りると、同名のクラスが別々のクラスローダーから読み込まれて LinkageError になるため)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(kotlin("stdlib-jdk8"))
     compileOnly(libs.bundles.coroutines.velocity)
-    compileOnly(kotlin("stdlib-jdk8"))
 
     // JARにバンドル
     implementation(libs.koin.core)
@@ -69,13 +71,13 @@ tasks {
         // 依存ライブラリのライセンスファイルが JAR 直下で重複しないよう除外する
         exclude("META-INF/LICENSE", "META-INF/NOTICE")
         dependencies {
-            exclude(dependency("org.jetbrains.kotlin:.*:.*"))
+            // kotlin-reflect は Velocity 版のコードでは使わないため同梱しない
+            exclude(dependency("org.jetbrains.kotlin:kotlin-reflect:.*"))
             exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:.*"))
             exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:.*"))
             exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:.*"))
             exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-bom:.*"))
             // kotlinx.serialization の core / json は実行環境が提供するが、HOCON フォーマットは同梱する必要があるため除外しない
-            exclude(dependency("org.jetbrains.kotlinx:kotlinx-serialization-(core|json).*:.*"))
             // チケット機能は Paper 専用で Velocity では使わないため、Exposed / SQLite (ネイティブ込みで十数 MB) は同梱しない
             exclude(dependency("org.jetbrains.exposed:.*:.*"))
             exclude(dependency("org.xerial:sqlite-jdbc:.*"))
