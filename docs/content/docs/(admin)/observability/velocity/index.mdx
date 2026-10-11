@@ -14,17 +14,16 @@ Velocity 用の JAR を [GitHub Releases](https://github.com/morinoparty/moripa-
 
 起動に成功すると、メトリクスの公開 URL が起動ログに出力されるので、そこでホストとポートを確認できます。
 
-### Kotlin ランタイムの要件
+### Kotlin ランタイム
 
-<Callout type="warn">
-Velocity 用の JAR には Kotlin の標準ライブラリ、kotlinx-coroutines、kotlinx-serialization が同梱されていません。
-これらのライブラリを提供する Kotlin ランタイムをプロキシ側に別途用意する必要があります。
-</Callout>
+Velocity 用の JAR には、Kotlin の標準ライブラリと kotlinx-serialization (core / json / hocon) が同梱されています。
+プロキシ側に Kotlin ランタイムを別途用意する必要はありません。
 
-Velocity 用のビルド (`velocity/build.gradle.kts` の `shadowJar` 設定) では、`org.jetbrains.kotlin` および `org.jetbrains.kotlinx` (coroutines, serialization) の依存関係を JAR から除外しています。
-そのため、これらのライブラリを何らかの方法でプロキシのクラスパスに提供しておく必要があります。
-このビルドで最低限必要なランタイムは kotlin-stdlib と kotlinx-serialization-json (core を含む) です。設定ファイルの読み込みに使う kotlinx-serialization-hocon と Typesafe Config は JAR に同梱されています (kotlinx-coroutines は JAR から除外されていますが、Velocity 版のコードでは使用していません)。
-検証済みの提供手順はまだ整備されておらず、現時点ではこのドキュメントに具体的な手順を掲載できていません。
+Velocity のプラグインは、自分の JAR に無いクラスを他のプラグインから借りて読み込みます。
+Kotlin の標準ライブラリと kotlinx-serialization を別々のプラグインから借りると、同じ名前のクラス (`kotlin.time.Duration` など) が別々のクラスローダーから読み込まれ、起動時に `LinkageError` (loader constraint violation) で失敗します。
+そのため、これらのライブラリはすべて MoripaUtils の JAR に同梱し、自分の JAR から読み込むようにしています。
+
+kotlinx-coroutines と kotlin-reflect は Velocity 版のコードでは使用しないため、JAR から除外しています。
 
 ## 設定ファイル
 
