@@ -1,4 +1,4 @@
-# JitPack で api モジュールだけを公開する設定
+# JitPack で api モジュールだけを公開する設定 (com.github.morinoparty:moripa-utils:<tag> として配布される)
 # Gradle 9 の実行には JDK 17 以上が必要。コンパイルに使う JDK 25 は foojay の toolchain 解決で自動的に取得する
 jdk:
   - openjdk17

@@ -31,8 +31,7 @@ java {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            // JitPack は com.github.{User}.{Repo}:{Module}:{Tag} で配布するため、JitPack 上ではその group で公開する
-            groupId = if (System.getenv("JITPACK") == "true") "com.github.morinoparty.moripa-utils" else project.group.toString()
+            // JitPack は公開されたモジュールが 1 つだけの場合、group / artifact を com.github.morinoparty:moripa-utils に読み替えて配布する
             artifactId = "api"
             from(components["java"])
         }
