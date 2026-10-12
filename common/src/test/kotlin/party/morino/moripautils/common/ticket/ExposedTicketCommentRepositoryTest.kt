@@ -21,9 +21,9 @@ import party.morino.moripautils.common.database.MoripaUtilsDatabase
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.model.config.DatabaseConfig
 import party.morino.moripautils.common.model.config.SqliteConfig
-import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
-import party.morino.moripautils.common.model.ticket.TicketLocation
+import party.morino.moripautils.api.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.ticket.database.ExposedTicketCommentRepository
 import party.morino.moripautils.common.ticket.database.ExposedTicketRepository

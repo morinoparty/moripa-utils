@@ -11,8 +11,8 @@ package party.morino.moripautils.common.ticket.database
 
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.javatime.timestamp
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketStatus
 
 /**
  * チケットを保存する tickets テーブルの定義

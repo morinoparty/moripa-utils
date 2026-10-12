@@ -10,6 +10,7 @@ package party.morino.moripautils.paper.api
 
 import party.morino.moripautils.api.MoripaUtilsAPI
 import party.morino.moripautils.api.schematic.SchematicAPI
+import party.morino.moripautils.api.ticket.TicketAPI
 
 /**
  * [MoripaUtilsAPI] の Paper 向けの実装
@@ -18,4 +19,5 @@ import party.morino.moripautils.api.schematic.SchematicAPI
  */
 class PaperMoripaUtilsAPI : MoripaUtilsAPI {
     override val schematic: SchematicAPI = PaperSchematicAPI()
+    override val ticket: TicketAPI = PaperTicketAPI()
 }

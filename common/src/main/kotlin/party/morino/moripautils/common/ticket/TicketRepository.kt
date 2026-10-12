@@ -9,11 +9,11 @@
 
 package party.morino.moripautils.common.ticket
 
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketListFilter
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketListFilter
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
-import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatus
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import java.util.UUID
 

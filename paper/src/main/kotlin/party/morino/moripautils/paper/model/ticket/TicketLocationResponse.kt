@@ -9,7 +9,7 @@
 package party.morino.moripautils.paper.model.ticket
 
 import kotlinx.serialization.Serializable
-import party.morino.moripautils.common.model.ticket.TicketLocation
+import party.morino.moripautils.api.model.ticket.TicketLocation
 
 /**
  * MineAuth の HTTP API で返す、チケット送信時の場所

@@ -8,9 +8,9 @@
  */
 package party.morino.moripautils.paper.ticket.view
 
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketStatus
 
 /**
  * チケットの対応状況をプレイヤー向けの表示名に変換する

@@ -1,0 +1,44 @@
+---
+title: 公開 API
+description: 他のプラグインから MoripaUtils の機能を使用するための API
+---
+
+# 公開 API
+
+MoripaUtils は、他のプラグインから機能を使用するための公開 API (`api` モジュール) を提供しています。
+`api` モジュールは [JitPack](https://jitpack.io/#morinoparty/moripa-utils) で配布しています。
+
+## 依存関係の追加
+
+JitPack のリポジトリを追加し、`api` モジュールに依存します。
+バージョンには GitHub のリリースのタグ (例: `v1.2.3`) を指定します。
+MoripaUtils 本体が実行時に API のクラスを提供するため、`compileOnly` で依存してください。
+
+```kotlin title="build.gradle.kts"
+repositories {
+    maven("https://jitpack.io")
+}
+
+dependencies {
+    compileOnly("com.github.morinoparty.moripa-utils:api:v1.2.3")
+}
+```
+
+API のクラスは Java 25 向けにコンパイルされています。
+また、API は MoripaUtils の有効化後に使用できるため、`plugin.yml` や `paper-plugin.yml` で MoripaUtils への依存関係を宣言してください。
+
+## API の取得
+
+`MoripaUtilsAPI.getInstance()` で API を取得し、機能ごとのプロパティから各機能の API を使用します。
+
+| プロパティ | 説明 |
+|-----------|------|
+| `schematic` | schematic のアップロードを行います。詳細は [Schematic](./schematic#公開-api) を参照してください。 |
+| `ticket` | チケットの閲覧・クローズ・コメントを行います。詳細は [チケットの公開 API](./ticket/api) を参照してください。 |
+
+```kotlin
+val api = MoripaUtilsAPI.getInstance()
+```
+
+API のメソッドは `CompletableFuture` で結果を返します。
+`CompletableFuture` はメインスレッド以外で完了する場合があるため、完了後に Bukkit の API を使用する場合は、メインスレッドに戻してから実行してください。

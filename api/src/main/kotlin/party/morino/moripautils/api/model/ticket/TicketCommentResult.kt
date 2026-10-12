@@ -7,7 +7,7 @@
  * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
 
-package party.morino.moripautils.common.model.ticket
+package party.morino.moripautils.api.model.ticket
 
 /**
  * コメント書き込みの結果

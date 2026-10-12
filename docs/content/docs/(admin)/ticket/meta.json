@@ -2,5 +2,5 @@
     "title": "Ticket",
     "description": "/ticket コマンドによる運営へのお問い合わせ",
     "icon": "Ticket",
-    "pages": ["index", "config", "mineauth"]
+    "pages": ["index", "config", "mineauth", "api"]
 }

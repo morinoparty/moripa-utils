@@ -11,7 +11,7 @@ package party.morino.moripautils.common.ticket.database
 
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.javatime.timestamp
-import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
 
 /**
  * チケットのコメントを保存する ticket_comments テーブルの定義

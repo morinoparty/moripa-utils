@@ -10,7 +10,7 @@
 package party.morino.moripautils.paper.model.ticket
 
 import kotlinx.serialization.Serializable
-import party.morino.moripautils.common.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.Ticket
 
 /**
  * MineAuth の HTTP API で返すチケット 1 件分のレスポンス

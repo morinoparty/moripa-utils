@@ -18,6 +18,8 @@ version = project.version.toString()
 dependencies {
     compileOnly(libs.paper.api)
     compileOnly(libs.velocity.api)
+    // チケットのモデルなど、外部プラグインにも公開する型は api モジュールに置いて共有する
+    api(project(":api"))
     implementation(libs.kotlinx.serialization.json)
     // 設定ファイル (config.conf) を HOCON 形式で読み書きする
     implementation(libs.bundles.config)

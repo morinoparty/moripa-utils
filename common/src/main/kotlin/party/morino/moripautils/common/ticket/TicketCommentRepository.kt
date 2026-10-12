@@ -9,7 +9,7 @@
 
 package party.morino.moripautils.common.ticket
 
-import party.morino.moripautils.common.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
 
 /**

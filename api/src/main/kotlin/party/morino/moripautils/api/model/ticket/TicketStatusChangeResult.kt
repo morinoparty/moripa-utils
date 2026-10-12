@@ -6,7 +6,7 @@
  * You should have received a copy of the CC0 Public Domain Dedication along with this software.
  * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
-package party.morino.moripautils.common.model.ticket
+package party.morino.moripautils.api.model.ticket
 
 /**
  * チケットの状態の変更 (クローズ / 再オープン) の結果

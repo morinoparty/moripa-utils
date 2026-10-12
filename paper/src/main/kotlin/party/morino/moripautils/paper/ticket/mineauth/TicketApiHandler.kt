@@ -23,10 +23,10 @@ import party.morino.mineauth.api.http.HttpError
 import party.morino.mineauth.api.http.HttpStatus
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.TicketConfig
-import party.morino.moripautils.common.model.ticket.TicketActor
-import party.morino.moripautils.common.model.ticket.TicketCommentResult
+import party.morino.moripautils.api.model.ticket.TicketActor
+import party.morino.moripautils.api.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
-import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatus
 import party.morino.moripautils.common.ticket.TicketRepository
 import party.morino.moripautils.common.ticket.TicketService
 import party.morino.moripautils.paper.model.ticket.TicketCommentListResponse

@@ -10,6 +10,8 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    // 外部プラグインが依存できるよう、JitPack で Maven 成果物として公開する
+    `maven-publish`
 }
 
 group = "party.morino"
@@ -19,4 +21,20 @@ dependencies {
     compileOnly(libs.paper.api)
     implementation(kotlin("stdlib-jdk8"))
     implementation(libs.kotlinx.serialization.json)
+}
+
+java {
+    // IDE で KDoc を参照できるようソースも一緒に公開する
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            // JitPack は com.github.{User}.{Repo}:{Module}:{Tag} で配布するため、JitPack 上ではその group で公開する
+            groupId = if (System.getenv("JITPACK") == "true") "com.github.morinoparty.moripa-utils" else project.group.toString()
+            artifactId = "api"
+            from(components["java"])
+        }
+    }
 }

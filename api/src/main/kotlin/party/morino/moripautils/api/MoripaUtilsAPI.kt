@@ -10,6 +10,7 @@
 package party.morino.moripautils.api
 
 import party.morino.moripautils.api.schematic.SchematicAPI
+import party.morino.moripautils.api.ticket.TicketAPI
 
 /**
  * 外部プラグイン向けの MoripaUtils の公開 API
@@ -19,6 +20,9 @@ import party.morino.moripautils.api.schematic.SchematicAPI
 interface MoripaUtilsAPI {
     /** schematic のアップロード (schematic 機能) の API */
     val schematic: SchematicAPI
+
+    /** チケット (ticket 機能) の閲覧・クローズ・コメントの API */
+    val ticket: TicketAPI
 
     companion object {
         private var instance: MoripaUtilsAPI? = null

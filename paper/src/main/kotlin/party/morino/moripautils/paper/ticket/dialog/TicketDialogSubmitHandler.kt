@@ -17,7 +17,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.entity.Player
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
-import party.morino.moripautils.common.model.ticket.TicketLocation
+import party.morino.moripautils.api.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import party.morino.moripautils.common.ticket.TicketService
 import party.morino.moripautils.paper.MoripaUtils
