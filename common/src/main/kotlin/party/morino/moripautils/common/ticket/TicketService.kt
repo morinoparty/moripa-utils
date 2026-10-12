@@ -17,18 +17,18 @@ import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.TicketCategory
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketActor
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketComment
-import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
-import party.morino.moripautils.common.model.ticket.TicketCommentResult
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketActor
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.api.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
-import party.morino.moripautils.common.model.ticket.TicketListFilter
-import party.morino.moripautils.common.model.ticket.TicketLocation
-import party.morino.moripautils.common.model.ticket.TicketStatus
-import party.morino.moripautils.common.model.ticket.TicketStatusChange
-import party.morino.moripautils.common.model.ticket.TicketStatusChangeResult
+import party.morino.moripautils.api.model.ticket.TicketListFilter
+import party.morino.moripautils.api.model.ticket.TicketLocation
+import party.morino.moripautils.api.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatusChange
+import party.morino.moripautils.api.model.ticket.TicketStatusChangeResult
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import java.time.Instant
@@ -119,17 +119,40 @@ class TicketService(
             else -> Unit
         }
 
+        val comment = saveComment(actor, ticket, authorType, trimmedContent)
+        return TicketCommentResult.Success(ticket, comment)
+    }
+
+    /**
+     * 検証済みのコメントを保存して通知する
+     *
+     * @param actor 書き込む人
+     * @param ticket コメント先のチケット (権限は確認済みであること)
+     * @param authorType 判定済みの書き込んだ人の立場
+     * @param content 検証済みの本文 (前後の空白は取り除いてある)
+     * @param notify コメントの通知を行うかどうか (クローズの通知にまとめる場合は false)
+     * @return 保存されたコメント。通知の完了は待たない
+     */
+    private suspend fun saveComment(
+        actor: TicketActor,
+        ticket: Ticket,
+        authorType: TicketCommentAuthorType,
+        content: String,
+        notify: Boolean = true,
+    ): TicketComment {
         val comment = commentRepository.create(
             TicketCommentSubmission(
                 ticketId = ticket.id,
                 authorUuid = actor.uuid,
                 authorName = actor.name,
                 authorType = authorType,
-                content = trimmedContent,
+                content = content,
             ),
         )
-        launchNotifications("comment #${comment.id} on ticket #${ticket.id}") { it.notifyComment(ticket, comment) }
-        return TicketCommentResult.Success(ticket, comment)
+        if (notify) {
+            launchNotifications("comment #${comment.id} on ticket #${ticket.id}") { it.notifyComment(ticket, comment) }
+        }
+        return comment
     }
 
     /**
@@ -171,17 +194,40 @@ class TicketService(
      * チケットをクローズする
      *
      * 本人は自分のチケットを、運営はすべてのチケットをクローズできる。
+     * [comment] を指定した場合は、クローズする前にコメントとして書き込む (クローズの理由を残すため)。
+     * データベースにはクローズ時のコメントを別に持たず、通常のコメントとして保存する。
+     * 通知はコメント単体では行わず、クローズの通知 ([TicketStatusChange.comment]) にまとめる。
      *
      * @param actor クローズする人
      * @param ticketId チケットの id
      * @param reason クローズする理由
-     * @return 変更結果。失敗した場合は保存も通知も行わない。通知の完了は待たない
+     * @param comment クローズと同時に書き込むコメント (書き込まない場合は null。前後の空白は取り除いて保存する)
+     * @return 変更結果。失敗した場合はコメントの保存もクローズも通知も行わない。通知の完了は待たない
      */
-    suspend fun closeTicket(actor: TicketActor, ticketId: Long, reason: TicketCloseReason): TicketStatusChangeResult {
+    suspend fun closeTicket(
+        actor: TicketActor,
+        ticketId: Long,
+        reason: TicketCloseReason,
+        comment: String? = null,
+    ): TicketStatusChangeResult {
         // 存在しないチケットと他人のチケットを区別させない
         val ticket = findAccessibleTicket(actor, ticketId) ?: return TicketStatusChangeResult.TicketNotFound
         if (ticket.status == TicketStatus.CLOSED) {
             return TicketStatusChangeResult.AlreadyClosed
+        }
+        val trimmedComment = comment?.trim()
+        if (trimmedComment != null) {
+            // コメントだけ書き込まれてクローズされない状態を避けるため、保存する前に本文を検証する
+            when (val error = validateContent(trimmedComment)) {
+                TicketSubmitResult.BlankContent -> return TicketStatusChangeResult.BlankComment
+                is TicketSubmitResult.ContentTooLong -> return TicketStatusChangeResult.CommentTooLong(error.maxLength)
+                else -> Unit
+            }
+            // 閲覧できることは確認済みのため、立場は必ず判定できる
+            val authorType = checkNotNull(resolveAuthorType(ticket, actor))
+            // スレッド上で理由のコメントがクローズより前に並ぶよう、先に書き込む
+            val savedComment = saveComment(actor, ticket, authorType, trimmedComment, notify = false)
+            return changeStatus(actor, ticket, TicketStatus.CLOSED, reason, savedComment)
         }
         return changeStatus(actor, ticket, TicketStatus.CLOSED, reason)
     }
@@ -213,6 +259,7 @@ class TicketService(
      * @param ticket 変更前のチケット (権限と現在の状態は確認済みであること)
      * @param status 変更後の状態
      * @param closeReason クローズした理由 (オープンに戻す場合は null)
+     * @param comment クローズと同時に書き込んだコメント (通知に含める。無い場合は null)
      * @return 変更結果
      */
     private suspend fun changeStatus(
@@ -220,10 +267,11 @@ class TicketService(
         ticket: Ticket,
         status: TicketStatus,
         closeReason: TicketCloseReason?,
+        comment: TicketComment? = null,
     ): TicketStatusChangeResult {
         // 確認してから更新するまでの間に削除された場合は見つからなかったものとして扱う
         val updated = repository.updateStatus(ticket.id, status, closeReason) ?: return TicketStatusChangeResult.TicketNotFound
-        val change = TicketStatusChange(updated, actor, Instant.now())
+        val change = TicketStatusChange(updated, actor, Instant.now(), comment)
         launchNotifications("status change of ticket #${ticket.id}") { it.notifyStatusChange(change) }
         return TicketStatusChangeResult.Success(change)
     }

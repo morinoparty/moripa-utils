@@ -14,8 +14,9 @@ import kotlinx.serialization.Serializable
 /**
  * MoripaUtils 全体の設定 (プラグインのデータフォルダにある config.conf に対応する)
  *
- * Paper / Velocity で同じ形を使う。Velocity ではチケット機能とデータベース / ストレージを使わないため
- * [ticket] / [database] / [storage] は無視される。お知らせは Velocity 専用のため、Paper では [announcement] は無視される。
+ * Paper / Velocity で同じ形を使う。Velocity ではストレージを使わないため [storage] は無視され、
+ * [ticket] / [database] はチケットの公開 API (MySQL を使う場合のみ) に使われる。
+ * お知らせは Velocity 専用のため、Paper では [announcement] は無視される。
  *
  * @property server このサーバーを識別する文字列 (例: main, lobby)。メトリクスのラベルやチケットの送信元として使う。
  *   英数字 / ハイフン / アンダースコアのみ使用できる

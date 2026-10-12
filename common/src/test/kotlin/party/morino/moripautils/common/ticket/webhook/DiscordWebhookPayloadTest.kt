@@ -18,14 +18,14 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.config.TicketWebhookConfig
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketActor
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketComment
-import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
-import party.morino.moripautils.common.model.ticket.TicketLocation
-import party.morino.moripautils.common.model.ticket.TicketStatus
-import party.morino.moripautils.common.model.ticket.TicketStatusChange
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketActor
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.api.model.ticket.TicketLocation
+import party.morino.moripautils.api.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatusChange
 import java.time.Instant
 import java.util.UUID
 
@@ -117,6 +117,21 @@ class DiscordWebhookPayloadTest {
         // author はチケットの送信者、footer は変更した人
         assertEquals("_NIKOMARU", embed["author"]!!.jsonObject["name"]!!.jsonPrimitive.content)
         assertEquals("Done-marked by discord-bot", embed["footer"]!!.jsonObject["text"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    @DisplayName("Shows the close comment as the embed message")
+    fun showsCloseCommentAsMessage() {
+        val closed = ticket.copy(status = TicketStatus.CLOSED, closeReason = TicketCloseReason.DONE)
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+        val comment = TicketComment(1, closed.id, null, "discord-bot", TicketCommentAuthorType.STAFF, "対応しました", Instant.parse("2026-08-18T13:05:00Z"))
+        val change = TicketStatusChange(closed, staff, Instant.parse("2026-08-18T13:05:00Z"), comment)
+
+        val payload = DiscordWebhookPayload.createStatusChange(change, null, TicketWebhookConfig())
+
+        // MESSAGE 欄はチケットの本文ではなくクローズ時のコメントになる
+        val field = payload["embeds"]!!.jsonArray.single().jsonObject["fields"]!!.jsonArray.single().jsonObject
+        assertEquals("対応しました", field["value"]!!.jsonPrimitive.content)
     }
 
     @Test

@@ -41,6 +41,7 @@ import party.morino.moripautils.common.schematic.di.SchematicModule
 import party.morino.moripautils.common.storage.ObjectStorage
 import party.morino.moripautils.common.storage.di.StorageModule
 import party.morino.moripautils.common.ticket.TicketService
+import party.morino.moripautils.common.ticket.api.TicketApiScope
 import party.morino.moripautils.common.ticket.di.TicketModule
 import party.morino.moripautils.api.MoripaUtilsAPI
 import party.morino.moripautils.paper.api.PaperMoripaUtilsAPI
@@ -203,6 +204,8 @@ open class MoripaUtils(
         // 古いコンテナを参照する API ハンドラーが残らないよう、MineAuth の登録を解除する
         closeMineAuthRegistration()
         // ticket 機能が無効な場合はサービスもデータベースも定義されていない
+        // 公開 API の処理を先に止め、閉じたデータベースへアクセスし続けないようにする
+        koin?.getOrNull<TicketApiScope>()?.close()
         koin?.getOrNull<TicketService>()?.close()
         koin?.getOrNull<MoripaUtilsDatabase>()?.close()
         // ストレージが設定されていない場合は定義されていない

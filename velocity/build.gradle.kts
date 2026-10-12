@@ -33,7 +33,11 @@ dependencies {
     // (他のプラグインから借りると、同名のクラスが別々のクラスローダーから読み込まれて LinkageError になるため)
     implementation(libs.kotlinx.serialization.json)
     implementation(kotlin("stdlib-jdk8"))
+    // ticket の公開 API (TicketService / Exposed) が使うため、kotlinx-coroutines も同梱する
+    implementation(libs.kotlinx.coroutines.core)
     compileOnly(libs.bundles.coroutines.velocity)
+    // ticket の公開 API が共有データベース (MySQL) に接続するための JDBC ドライバー (Velocity 本体には同梱されていない)
+    implementation(libs.mysql.connector)
 
     // JARにバンドル
     implementation(libs.koin.core)
@@ -71,15 +75,8 @@ tasks {
         // 依存ライブラリのライセンスファイルが JAR 直下で重複しないよう除外する
         exclude("META-INF/LICENSE", "META-INF/NOTICE")
         dependencies {
-            // kotlin-reflect は Velocity 版のコードでは使わないため同梱しない
-            exclude(dependency("org.jetbrains.kotlin:kotlin-reflect:.*"))
-            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:.*"))
-            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:.*"))
-            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:.*"))
-            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-bom:.*"))
-            // kotlinx.serialization の core / json は実行環境が提供するが、HOCON フォーマットは同梱する必要があるため除外しない
-            // チケット機能は Paper 専用で Velocity では使わないため、Exposed / SQLite (ネイティブ込みで十数 MB) は同梱しない
-            exclude(dependency("org.jetbrains.exposed:.*:.*"))
+            // Velocity の ticket の公開 API は MySQL にだけ接続するため、SQLite (ネイティブ込みで十数 MB) は同梱しない
+            // (Exposed と、Exposed が依存する kotlin-reflect は同梱する)
             exclude(dependency("org.xerial:sqlite-jdbc:.*"))
         }
     }

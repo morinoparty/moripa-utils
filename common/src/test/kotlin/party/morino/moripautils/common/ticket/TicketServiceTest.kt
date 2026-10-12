@@ -25,19 +25,19 @@ import org.koin.dsl.module
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.TicketCategory
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketActor
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketComment
-import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
-import party.morino.moripautils.common.model.ticket.TicketCommentResult
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketActor
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.api.model.ticket.TicketCommentResult
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
-import party.morino.moripautils.common.model.ticket.TicketListFilter
-import party.morino.moripautils.common.model.ticket.TicketLocation
+import party.morino.moripautils.api.model.ticket.TicketListFilter
+import party.morino.moripautils.api.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
-import party.morino.moripautils.common.model.ticket.TicketStatus
-import party.morino.moripautils.common.model.ticket.TicketStatusChange
-import party.morino.moripautils.common.model.ticket.TicketStatusChangeResult
+import party.morino.moripautils.api.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatusChange
+import party.morino.moripautils.api.model.ticket.TicketStatusChangeResult
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.model.ticket.TicketSubmitResult
 import java.time.Instant
@@ -195,6 +195,27 @@ class TicketServiceTest {
         // クローズと再オープンの 2 回だけ通知される
         notificationJob.children.toList().joinAll()
         assertEquals(listOf(TicketStatus.CLOSED, TicketStatus.OPEN), notifier.statusChanges.map { it.ticket.status })
+    }
+
+    @Test
+    @DisplayName("Closes with a comment and notifies it as part of the close")
+    fun closesWithComment() = runBlocking {
+        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", LOCATION, "bug", "hello"))
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+
+        // 空のコメントではコメントもクローズも行わない
+        assertEquals(TicketStatusChangeResult.BlankComment, service.closeTicket(staff, ticket.id, TicketCloseReason.DONE, "  "))
+        assertEquals(TicketStatus.OPEN, repository.findById(ticket.id)?.status)
+
+        val result = service.closeTicket(staff, ticket.id, TicketCloseReason.DONE, " 対応しました ")
+        val success = assertInstanceOf(TicketStatusChangeResult.Success::class.java, result)
+        assertEquals("対応しました", success.change.comment?.content)
+        assertEquals(listOf("対応しました"), commentRepository.created.map { it.content })
+
+        // コメント単体では通知せず、クローズの通知にまとめる
+        notificationJob.children.toList().joinAll()
+        assertEquals(emptyList<TicketComment>(), notifier.commented)
+        assertEquals(listOf("対応しました"), notifier.statusChanges.map { it.comment?.content })
     }
 
     /** create の呼び出しを記録し、連番の id を振って返すリポジトリ */

@@ -8,12 +8,17 @@
  */
 package party.morino.moripautils.paper
 
+import io.mockk.mockk
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import org.incendo.cloud.CommandManager
 import org.incendo.cloud.annotations.AnnotationParser
+import org.incendo.cloud.context.CommandContext
+import org.incendo.cloud.context.CommandInput
 import org.incendo.cloud.execution.ExecutionCoordinator
 import org.incendo.cloud.internal.CommandRegistrationHandler
 import org.incendo.cloud.kotlin.coroutines.annotations.installCoroutineSupport
+import org.incendo.cloud.setting.ManagerSetting
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -46,5 +51,22 @@ class CommandRegistrationTest {
         assertDoesNotThrow { parser.parse(TicketCommand()) }
         assertDoesNotThrow { parser.parse(ReloadCommand()) }
         assertDoesNotThrow { parser.parse(SchematicCommand()) }
+    }
+
+    @Test
+    @DisplayName("Close comment flag takes the words up to the next flag")
+    fun closeCommentFlagYieldsToNextFlag() {
+        val manager = TestCommandManager()
+        // 本番 (MoripaUtilsBootstrap) と同じく、省略できる引数より前にフラグを書けるようにする
+        manager.settings().set(ManagerSetting.LIBERAL_FLAG_PARSING, true)
+        AnnotationParser(manager, CommandSourceStack::class.java).installCoroutineSupport().parse(TicketCommand())
+        val context = CommandContext(mockk<CommandSourceStack>(relaxed = true), manager)
+
+        // 空白を含むコメントの後ろに別のフラグを書いても、コメントに取り込まれない
+        val input = CommandInput.of("ticket close 3 --comment 対応しました ありがとう --reason-type duplicate")
+        manager.commandTree().parse(context, input, Runnable::run).join()
+
+        assertEquals("対応しました ありがとう", context.flags().getValue<String>("comment").orElse(null))
+        assertEquals("duplicate", context.flags().getValue<String>("reason-type").orElse(null))
     }
 }

@@ -20,7 +20,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.koin.core.component.inject
 import party.morino.moripautils.common.database.MoripaUtilsDatabase
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
-import party.morino.moripautils.common.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketComment
 import party.morino.moripautils.common.model.ticket.TicketCommentSubmission
 import party.morino.moripautils.common.ticket.TicketCommentRepository
 import java.time.Instant

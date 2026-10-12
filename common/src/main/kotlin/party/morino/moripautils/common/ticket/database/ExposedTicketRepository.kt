@@ -22,12 +22,12 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.koin.core.component.inject
 import party.morino.moripautils.common.database.MoripaUtilsDatabase
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketListFilter
-import party.morino.moripautils.common.model.ticket.TicketLocation
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketListFilter
+import party.morino.moripautils.api.model.ticket.TicketLocation
 import party.morino.moripautils.common.model.ticket.TicketSearchQuery
-import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatus
 import party.morino.moripautils.common.model.ticket.TicketSubmission
 import party.morino.moripautils.common.ticket.TicketRepository
 import java.time.Instant

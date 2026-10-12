@@ -136,7 +136,8 @@ hollow-cube/schem で貼り付ける場合は、`forEachBlock` で渡される�
 
 ## 公開 API
 
-他のプラグインからは、`MoripaUtilsAPI` を通じて schematic をアップロードできます。
+他のプラグインからは、Paper 版の公開 API である `MoripaUtilsPaperAPI` を通じて schematic をアップロードできます。
+依存関係の追加方法は [公開 API](./api) を参照してください。
 API は MoripaUtils の有効化後に使用できるため、`plugin.yml` などで MoripaUtils への依存関係を宣言してください。
 
 | メソッド | 説明 |
@@ -157,7 +158,7 @@ API は MoripaUtils の有効化後に使用できるため、`plugin.yml` な�
 | `UPLOAD_FAILED` | schematic の書き出し、またはストレージへの保存に失敗しました。詳細はサーバーのログに出力されます。 |
 
 ```kotlin
-val api = MoripaUtilsAPI.getInstance()
+val api = MoripaUtilsPaperAPI.getInstance()
 // 7 日後に削除する予定としてアップロードする
 val deleteAt = Instant.now().plus(7, ChronoUnit.DAYS)
 api.schematic.uploadClipboard(player, "ロビーの噴水", deleteAt).whenComplete { id, error ->

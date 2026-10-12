@@ -14,10 +14,10 @@ import org.bukkit.entity.Player
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.TicketConfig
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketComment
-import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
-import party.morino.moripautils.common.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.api.model.ticket.TicketStatus
 import party.morino.moripautils.paper.ticket.TicketPermissions
 import java.time.Instant
 import java.time.ZoneId

@@ -6,7 +6,7 @@
  * You should have received a copy of the CC0 Public Domain Dedication along with this software.
  * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
-package party.morino.moripautils.common.model.ticket
+package party.morino.moripautils.api.model.ticket
 
 /**
  * チケットの状態の変更 (クローズ / 再オープン) の結果
@@ -34,4 +34,16 @@ sealed interface TicketStatusChangeResult {
 
     /** 既にオープンしている */
     data object AlreadyOpen : TicketStatusChangeResult
+
+    /** クローズと同時に書き込むコメントが空 (空白のみを含む) */
+    data object BlankComment : TicketStatusChangeResult
+
+    /**
+     * クローズと同時に書き込むコメントが長すぎる
+     *
+     * @property maxLength 許容される最大文字数
+     */
+    data class CommentTooLong(
+        val maxLength: Int,
+    ) : TicketStatusChangeResult
 }

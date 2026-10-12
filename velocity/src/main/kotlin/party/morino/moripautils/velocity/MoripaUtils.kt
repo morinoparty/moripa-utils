@@ -25,7 +25,10 @@ import org.koin.core.component.get
 import org.slf4j.Logger
 import party.morino.moripautils.common.BuildConstants
 import party.morino.moripautils.common.MoripaUtilsCommon
+import party.morino.moripautils.api.MoripaUtilsAPI
 import party.morino.moripautils.common.config.MoripaUtilsConfigLoader
+import party.morino.moripautils.common.database.MoripaUtilsDatabase
+import party.morino.moripautils.common.database.di.DatabaseModule
 import party.morino.moripautils.common.di.CommonModule
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.observability.http.MetricsHttpServer
@@ -33,11 +36,17 @@ import party.morino.moripautils.common.observability.metrics.JvmMetricsCollector
 import party.morino.moripautils.common.observability.metrics.MetricsCollector
 import party.morino.moripautils.common.observability.metrics.MetricsExporter
 import party.morino.moripautils.common.model.config.AnnouncementConfig
+import party.morino.moripautils.common.model.config.DatabaseConfig
+import party.morino.moripautils.common.model.config.DatabaseType
 import party.morino.moripautils.common.model.config.HttpServerConfig
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.ObservabilityConfig
 import party.morino.moripautils.common.model.reload.ReloadResult
+import party.morino.moripautils.common.ticket.TicketService
+import party.morino.moripautils.common.ticket.api.TicketApiScope
+import party.morino.moripautils.common.ticket.di.TicketModule
 import party.morino.moripautils.velocity.announcement.AnnouncementBroadcaster
+import party.morino.moripautils.velocity.api.VelocityMoripaUtilsAPI
 import party.morino.moripautils.velocity.announcement.AnnouncementMessageLoader
 import party.morino.moripautils.velocity.di.VelocityModule
 import party.morino.moripautils.velocity.reload.command.ReloadCommandRegistrar
@@ -72,7 +81,7 @@ class MoripaUtils @Inject constructor(
     /**
      * 再読み込みを実行中かどうか (/muv reload が連打されても 1 回ずつ処理する)
      *
-     * Velocity 版の JAR は kotlinx-coroutines を同梱しないため、Mutex ではなく AtomicBoolean で排他する。
+     * Cloud の非同期コーディネーターから通常の関数として呼ばれるため、Mutex ではなく AtomicBoolean で排他する。
      */
     private val reloading = AtomicBoolean(false)
 
@@ -85,6 +94,8 @@ class MoripaUtils @Inject constructor(
         val config = createConfigLoader().load()
         setupKoin(config)
         MoripaUtilsCommon.init()
+        // 公開 API は呼び出し時に Koin から依存を取り出すため、再読み込みしても設定し直す必要はない
+        MoripaUtilsAPI.setInstance(VelocityMoripaUtilsAPI())
 
         val commandManager = VelocityCommandManager<CommandSource>(
             server.pluginManager.ensurePluginContainer(this),
@@ -151,7 +162,8 @@ class MoripaUtils @Inject constructor(
     /**
      * 設定で有効化されている機能を起動する
      *
-     * チケット機能は Paper 専用のため、Velocity では observability 機能とお知らせ機能を扱う。
+     * Velocity では observability 機能とお知らせ機能に加え、他のプラグイン向けにチケットの公開 API を扱う
+     * (/ticket コマンドなどの UI は Paper 専用)。
      *
      * @param config 読み込み済みの設定
      */
@@ -166,6 +178,11 @@ class MoripaUtils @Inject constructor(
         } else {
             logger.info("Announcement is disabled in config.conf")
         }
+        if (config.ticket.enabled) {
+            startTicket(config.database)
+        } else {
+            logger.info("Ticket is disabled in config.conf")
+        }
     }
 
     /**
@@ -179,6 +196,11 @@ class MoripaUtils @Inject constructor(
         connectionEventListener = null
         MoripaUtilsKoinContext.getOrNull()?.getOrNull<MetricsExporter>()?.stop()
         MoripaUtilsKoinContext.getOrNull()?.getOrNull<AnnouncementBroadcaster>()?.stop()
+        // ticket の公開 API が無効な場合はスコープもサービスもデータベースも定義されていない
+        // 公開 API の処理を先に止め、閉じたデータベースへアクセスし続けないようにする
+        MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketApiScope>()?.close()
+        MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketService>()?.close()
+        MoripaUtilsKoinContext.getOrNull()?.getOrNull<MoripaUtilsDatabase>()?.close()
     }
 
     /**
@@ -250,6 +272,30 @@ class MoripaUtils @Inject constructor(
     }
 
     /**
+     * ticket の公開 API (MoripaUtilsAPI.ticket) が使うサービスとデータベースを読み込む
+     *
+     * Paper のサーバーと同じチケットを扱えるよう、共有データベース (MySQL) を使う場合だけ有効にする。
+     * SQLite は Paper のサーバーごとのファイルのため、Velocity からは扱わない。
+     * 接続は最初のチケット操作時に I/O スレッドで行う。
+     *
+     * @param databaseConfig 共有データベースの設定
+     */
+    private fun startTicket(databaseConfig: DatabaseConfig) {
+        if (databaseConfig.type != DatabaseType.MYSQL) {
+            logger.info("Ticket API is disabled because database.type is not mysql")
+            return
+        }
+        MoripaUtilsKoinContext.loadModules(
+            listOf(
+                DatabaseModule.create(dataDirectory, databaseConfig),
+                // TicketService などは java.util.logging のロガーを使うため、プラグイン名のロガーを渡す
+                TicketModule.create(java.util.logging.Logger.getLogger(TICKET_LOGGER_NAME)),
+            ),
+        )
+        logger.info("Ticket API is enabled (database: {})", databaseConfig.mysql.host)
+    }
+
+    /**
      * このプラグイン専用の Koin コンテナを起動する
      *
      * 他プラグインと GlobalContext を共有しないよう、[MoripaUtilsKoinContext] に独立したコンテナを作る。
@@ -267,6 +313,9 @@ class MoripaUtils @Inject constructor(
     companion object {
         /** お知らせのメッセージファイル (<title>.json) を置くディレクトリの名前 */
         private const val ANNOUNCEMENT_DIRECTORY_NAME = "message"
+
+        /** ticket 機能の通知の失敗などを記録するロガーの名前 */
+        private const val TICKET_LOGGER_NAME = "MoripaUtils"
 
         /**
          * Velocity 向けの既定設定

@@ -10,7 +10,7 @@
 package party.morino.moripautils.paper.ticket
 
 import org.bukkit.entity.Player
-import party.morino.moripautils.common.model.ticket.TicketActor
+import party.morino.moripautils.api.model.ticket.TicketActor
 
 /**
  * プレイヤーをチケットの操作者に変換する

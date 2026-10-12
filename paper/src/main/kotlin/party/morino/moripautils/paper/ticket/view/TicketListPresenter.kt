@@ -14,8 +14,8 @@ import org.bukkit.entity.Player
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.TicketConfig
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketListFilter
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketListFilter
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 

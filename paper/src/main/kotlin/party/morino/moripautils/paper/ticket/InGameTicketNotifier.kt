@@ -17,10 +17,10 @@ import org.bukkit.Server
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.TicketCategory
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketComment
-import party.morino.moripautils.common.model.ticket.TicketCommentAuthorType
-import party.morino.moripautils.common.model.ticket.TicketStatusChange
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
+import party.morino.moripautils.api.model.ticket.TicketStatusChange
 import party.morino.moripautils.common.ticket.TicketNotifier
 import party.morino.moripautils.paper.MoripaUtils
 import party.morino.moripautils.paper.ticket.view.TicketStatusLabel

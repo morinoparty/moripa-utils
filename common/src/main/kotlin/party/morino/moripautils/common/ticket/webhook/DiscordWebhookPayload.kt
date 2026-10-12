@@ -17,11 +17,11 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.config.TicketWebhookConfig
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketComment
-import party.morino.moripautils.common.model.ticket.TicketStatus
-import party.morino.moripautils.common.model.ticket.TicketStatusChange
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatusChange
 
 /**
  * 新しいチケットやコメント、状態の変更を知らせる Discord Webhook の本文 (JSON) を組み立てる
@@ -117,6 +117,7 @@ object DiscordWebhookPayload {
      * チケットのクローズ / 再オープン 1 件分の Webhook 本文を組み立てる
      *
      * author はチケットを送信したプレイヤー、footer は状態を変更した人にする。
+     * クローズと同時にコメントが書き込まれた場合は、MESSAGE 欄にチケットの本文ではなくそのコメントを表示する。
      *
      * @param change 状態の変更
      * @param categoryName チケットのカテゴリーの表示名 (設定から削除されている場合は null で、id をそのまま表示する)
@@ -134,7 +135,8 @@ object DiscordWebhookPayload {
                 authorName = ticket.playerName,
                 authorIcon = AvatarUrlTemplate.resolve(config.avatarUrl, ticket.playerName, ticket.playerUuid),
                 info = ticketInfo(ticket, categoryName ?: ticket.categoryId),
-                message = ticket.content,
+                // クローズの理由として書き込まれたコメントがあれば、それを伝える方が対応の経緯が分かる
+                message = change.comment?.content ?: ticket.content,
                 footerText = "$action by ${actor.name}",
                 footerIcon = AvatarUrlTemplate.resolve(config.avatarUrl, actor.name, actor.uuid),
                 color = color,

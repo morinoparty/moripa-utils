@@ -27,8 +27,8 @@ import java.sql.Connection
  *
  * 各機能はこのクラスの [query] を通して、同じデータベースの中の機能ごとのテーブルを読み書きする。
  * 接続は最初の [query] で I/O スレッド上に作り、メインスレッドでの I/O を避ける。
- * Exposed / JDBC に依存するため、データベースを使う機能が有効な Paper でだけ生成すること
- * (Velocity の JAR には Exposed を同梱していない)。
+ * データベースを使う機能が有効な場合にだけ生成する。
+ * Velocity の JAR には SQLite の JDBC ドライバーを同梱していないため、Velocity では MySQL の場合にだけ生成すること。
  *
  * @param config データベースの設定
  * @param dataDirectory プラグインのデータフォルダ (SQLite ファイルの基準になる)
@@ -107,7 +107,7 @@ class MoripaUtilsDatabase(
         /** SQLite の JDBC ドライバー (Paper 本体に同梱されている org.xerial:sqlite-jdbc) */
         private const val SQLITE_DRIVER = "org.sqlite.JDBC"
 
-        /** MySQL の JDBC ドライバー (Paper 本体に同梱されている com.mysql:mysql-connector-j) */
+        /** MySQL の JDBC ドライバー (Paper では本体同梱、Velocity では JAR に同梱した com.mysql:mysql-connector-j) */
         private const val MYSQL_DRIVER = "com.mysql.cj.jdbc.Driver"
 
         /** MySQL で同時に実行するトランザクションの上限 (接続プールを持たないため控えめにする) */

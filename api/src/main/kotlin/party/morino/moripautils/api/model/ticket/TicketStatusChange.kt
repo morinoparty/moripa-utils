@@ -6,7 +6,7 @@
  * You should have received a copy of the CC0 Public Domain Dedication along with this software.
  * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
-package party.morino.moripautils.common.model.ticket
+package party.morino.moripautils.api.model.ticket
 
 import java.time.Instant
 
@@ -16,9 +16,11 @@ import java.time.Instant
  * @property ticket 変更後のチケット (クローズの場合は [Ticket.closeReason] に理由が入る)
  * @property actor 変更した人
  * @property changedAt 変更した日時
+ * @property comment クローズと同時に書き込まれたコメント (コメントなしでクローズした場合や再オープンの場合は null)
  */
 data class TicketStatusChange(
     val ticket: Ticket,
     val actor: TicketActor,
     val changedAt: Instant,
+    val comment: TicketComment? = null,
 )

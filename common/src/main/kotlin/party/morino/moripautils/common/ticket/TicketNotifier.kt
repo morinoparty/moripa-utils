@@ -10,9 +10,9 @@
 package party.morino.moripautils.common.ticket
 
 import party.morino.moripautils.common.model.config.TicketCategory
-import party.morino.moripautils.common.model.ticket.Ticket
-import party.morino.moripautils.common.model.ticket.TicketComment
-import party.morino.moripautils.common.model.ticket.TicketStatusChange
+import party.morino.moripautils.api.model.ticket.Ticket
+import party.morino.moripautils.api.model.ticket.TicketComment
+import party.morino.moripautils.api.model.ticket.TicketStatusChange
 
 /**
  * 新しいチケットやコメント、状態の変更を知らせる通知先 (Observer)

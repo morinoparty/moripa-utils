@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.Location
 import org.bukkit.entity.Player
+import org.incendo.cloud.annotation.specifier.FlagYielding
 import org.incendo.cloud.annotation.specifier.Range
 import org.incendo.cloud.annotations.Argument
 import org.incendo.cloud.annotations.Command
@@ -26,10 +27,10 @@ import org.incendo.cloud.annotations.suggestion.Suggestions
 import org.incendo.cloud.context.CommandContext
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
-import party.morino.moripautils.common.model.ticket.TicketCloseReason
-import party.morino.moripautils.common.model.ticket.TicketListFilter
-import party.morino.moripautils.common.model.ticket.TicketStatus
-import party.morino.moripautils.common.model.ticket.TicketStatusChangeResult
+import party.morino.moripautils.api.model.ticket.TicketCloseReason
+import party.morino.moripautils.api.model.ticket.TicketListFilter
+import party.morino.moripautils.api.model.ticket.TicketStatus
+import party.morino.moripautils.api.model.ticket.TicketStatusChangeResult
 import party.morino.moripautils.common.ticket.TicketService
 import party.morino.moripautils.paper.MoripaUtils
 import party.morino.moripautils.paper.ticket.TicketPermissions
@@ -107,7 +108,7 @@ class TicketCommand {
             <yellow>/ticket list</yellow> <gray>- 送信したお問い合わせの一覧を見る</gray>
             <yellow>/ticket view \<番号></yellow> <gray>- 内容と運営からの返信を見る</gray>
             <yellow>/ticket comment \<番号></yellow> <gray>- コメントを書き込む</gray>
-            <yellow>/ticket close \<番号></yellow> <gray>- 解決したお問い合わせを閉じる</gray>
+            <yellow>/ticket close \<番号> [--comment \<コメント>]</yellow> <gray>- 解決したお問い合わせを閉じる</gray>
             詳しくは<click:open_url:'$HELP_URL'><hover:show_text:'$HELP_URL'><aqua><u>こちら</u></aqua></hover></click>
             """.trimIndent(),
         )
@@ -234,6 +235,7 @@ class TicketCommand {
      * @param source コマンドの実行元
      * @param id チケットの id
      * @param reasonType クローズする理由 (done / not-planned / duplicate、省略時は done)
+     * @param comment クローズと同時に書き込むコメント (省略時は書き込まない)。空白を含められるよう、次のフラグまでを本文とする
      */
     @Command("ticket close <id>")
     @Permission(TicketPermissions.USE)
@@ -242,6 +244,7 @@ class TicketCommand {
         source: CommandSourceStack,
         @Argument(value = "id", suggestions = OPEN_TICKET_ID_SUGGESTIONS) id: Long,
         @Flag(value = "reason-type", suggestions = CLOSE_REASON_SUGGESTIONS) reasonType: String?,
+        @Flag(value = "comment") @FlagYielding comment: String?,
     ) {
         val player = requirePlayer(source) ?: return
         val service = MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketService>()
@@ -258,7 +261,7 @@ class TicketCommand {
             )
             return
         }
-        sendStatusChangeResult(player, id, service.closeTicket(player.toTicketActor(), id, reason))
+        sendStatusChangeResult(player, id, service.closeTicket(player.toTicketActor(), id, reason, comment))
     }
 
     /**
@@ -446,6 +449,11 @@ class TicketCommand {
                 player.sendRichMessage("<yellow>お問い合わせ #<id> は既にクローズされています。", idPlaceholder)
             TicketStatusChangeResult.AlreadyOpen ->
                 player.sendRichMessage("<yellow>お問い合わせ #<id> は既にオープンしています。", idPlaceholder)
+            TicketStatusChangeResult.BlankComment -> player.sendRichMessage("<red>コメントを入力してください。")
+            is TicketStatusChangeResult.CommentTooLong -> player.sendRichMessage(
+                "<red>コメントは <max> 文字以内で入力してください。",
+                Placeholder.unparsed("max", result.maxLength.toString()),
+            )
         }
     }
 

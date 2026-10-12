@@ -9,6 +9,7 @@
 
 package party.morino.moripautils.common.model.ticket
 
+import party.morino.moripautils.api.model.ticket.TicketLocation
 import java.util.UUID
 
 /**

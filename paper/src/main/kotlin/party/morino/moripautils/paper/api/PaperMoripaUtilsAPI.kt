@@ -8,14 +8,17 @@
  */
 package party.morino.moripautils.paper.api
 
-import party.morino.moripautils.api.MoripaUtilsAPI
+import party.morino.moripautils.api.MoripaUtilsPaperAPI
 import party.morino.moripautils.api.schematic.SchematicAPI
+import party.morino.moripautils.api.ticket.TicketAPI
+import party.morino.moripautils.common.ticket.api.TicketAPIAdapter
 
 /**
- * [MoripaUtilsAPI] の Paper 向けの実装
+ * [MoripaUtilsPaperAPI] の Paper 向けの実装
  *
  * 各機能の API は呼び出し時に Koin から依存を取り出すため、再読み込み後もこのインスタンスをそのまま使える。
  */
-class PaperMoripaUtilsAPI : MoripaUtilsAPI {
+class PaperMoripaUtilsAPI : MoripaUtilsPaperAPI {
     override val schematic: SchematicAPI = PaperSchematicAPI()
+    override val ticket: TicketAPI = TicketAPIAdapter()
 }

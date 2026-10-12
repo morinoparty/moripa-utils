@@ -1,0 +1,49 @@
+---
+title: 公開 API
+description: 他のプラグインから MoripaUtils の機能を使用するための API
+---
+
+# 公開 API
+
+MoripaUtils は、他のプラグインから機能を使用するための公開 API (`api` モジュール) を提供しています。
+`api` モジュールは [JitPack](https://jitpack.io/#morinoparty/moripa-utils) で配布しています。
+
+## 依存関係の追加
+
+JitPack のリポジトリを追加し、`api` モジュールに依存します。
+バージョンには GitHub のリリースのタグ (例: `v1.2.3`) を指定します。
+MoripaUtils 本体が実行時に API のクラスを提供するため、`compileOnly` で依存してください。
+
+```kotlin title="build.gradle.kts"
+repositories {
+    maven("https://jitpack.io")
+}
+
+dependencies {
+    compileOnly("com.github.morinoparty:moripa-utils:v1.2.3")
+}
+```
+
+API のクラスは Java 25 向けにコンパイルされています。
+また、API は MoripaUtils の有効化後に使用できるため、MoripaUtils への依存関係を宣言してください。
+Paper では `plugin.yml` や `paper-plugin.yml` に、Velocity では `@Plugin` アノテーションの `dependencies` に `moripa-utils` を指定します。
+
+## API の取得
+
+API は Paper / Velocity で共通の `MoripaUtilsAPI` と、Paper 専用の機能を含む `MoripaUtilsPaperAPI` に分かれています。
+どちらも `getInstance()` で取得し、機能ごとのプロパティから各機能の API を使用します。
+
+| プロパティ | 取得元 | 説明 |
+|-----------|--------|------|
+| `ticket` | `MoripaUtilsAPI` / `MoripaUtilsPaperAPI` | チケットの閲覧・クローズ・コメントを行います。詳細は [チケットの公開 API](./ticket/api) を参照してください。 |
+| `schematic` | `MoripaUtilsPaperAPI` | schematic のアップロードを行います。Paper でのみ使用できます。詳細は [Schematic](./schematic#公開-api) を参照してください。 |
+
+```kotlin
+// Paper / Velocity の両方で使用できる
+val api = MoripaUtilsAPI.getInstance()
+// Paper でのみ使用できる (Velocity で呼ぶと IllegalStateException になる)
+val paperApi = MoripaUtilsPaperAPI.getInstance()
+```
+
+API のメソッドは `CompletableFuture` で結果を返します。
+`CompletableFuture` はメインスレッド以外で完了する場合があるため、完了後に Bukkit の API を使用する場合は、メインスレッドに戻してから実行してください。

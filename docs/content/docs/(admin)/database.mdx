@@ -18,8 +18,8 @@ MoripaUtils は、データを保存する機能 (現在はチケット機能) �
 | MySQL | `mysql` | 外部の MySQL サーバーに保存します。複数の Paper サーバーで同じデータを共有できます。 |
 
 <Callout type="info">
-データベースは Paper でのみ使用されます。Velocity では `database` ブロックは使用されません。
-JDBC ドライバーは Paper 本体に同梱されているもの (`sqlite-jdbc` / `mysql-connector-j`) を使用するため、別途導入する必要はありません。
+Velocity では、チケットの [公開 API](./ticket/api) を使用するためだけに、`database.type` が `mysql` の場合にのみ使用されます。
+JDBC ドライバーは、Paper では本体に同梱されているもの (`sqlite-jdbc` / `mysql-connector-j`) を、Velocity では MoripaUtils に同梱している `mysql-connector-j` を使用するため、別途導入する必要はありません。
 </Callout>
 
 ## デフォルトの設定

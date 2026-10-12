@@ -1,0 +1,114 @@
+---
+title: 公開 API
+description: 他のプラグインからチケットを閲覧・クローズ・コメントする API
+---
+
+# 公開 API
+
+他のプラグインからは、`MoripaUtilsAPI` の `ticket` を通じてチケットの閲覧・クローズ・コメントを行えます。
+依存関係の追加方法は [公開 API](../api) を参照してください。
+
+## 使用できる環境
+
+チケットの公開 API は、Paper と Velocity の両方で使用できます。
+
+| 環境 | 条件 |
+|------|------|
+| Paper | `ticket.enabled` が `true` の場合に使用できます。 |
+| Velocity | `ticket.enabled` が `true` で、かつ `database.type` が `mysql` の場合に使用できます。 |
+
+Velocity では、Paper のサーバーと共有している MySQL に接続してチケットを扱います。
+SQLite は Paper のサーバーごとのファイルに保存されるため、Velocity からは扱えません。
+Velocity の `config.conf` にも、Paper と同じ `database` ブロックを設定してください。
+接続設定の詳細は [データベース](../database) を参照してください。
+
+Velocity でクローズやコメントを行った場合、Discord への通知は Velocity の `config.conf` の `ticket` ブロックの設定で行われます。
+ゲーム内の運営への通知は Paper で操作した場合にのみ行われます。
+
+## 操作する人
+
+すべてのメソッドは、呼び出し側が指定した `TicketActor` として操作します。
+権限は `/ticket` コマンドや [MineAuth 連携](./mineauth) の HTTP API と同じ規則で判定されます。
+
+| プロパティ | 説明 |
+|-----------|------|
+| `uuid` | プレイヤーの UUID です。プレイヤー以外として操作する場合は `null` を指定します。 |
+| `name` | 表示名です。コメントの書き込み者名や、クローズした人の名前として通知に使用されます。 |
+| `isStaff` | 運営として、すべてのチケットを扱えるかどうかです。 |
+
+`uuid` がチケットの送信者と一致する場合は本人として、`isStaff` が `true` の場合は運営として扱われます。
+本人は自分のチケットだけを、運営はすべてのチケットを扱えます。
+閲覧できないチケットは、存在しないチケットと区別せずに扱われます。
+
+<Callout type="warn">
+`isStaff` は呼び出し側の指定をそのまま信頼します。
+プレイヤーの操作を受けて API を呼び出す場合は、`moripautils.ticket.staff` 権限を持つかどうかなどを呼び出し側で確認してから指定してください。
+</Callout>
+
+## メソッド
+
+| メソッド | 戻り値 | 説明 |
+|---------|--------|------|
+| `getTicket(actor, ticketId)` | `Ticket?` | チケットを取得します。存在しない場合や閲覧できない場合は `null` になります。 |
+| `listTickets(actor, filter, offset, limit)` | `List<Ticket>` | 閲覧できるチケットを新しい順に取得します。`filter` で状態やプレイヤー名を絞り込めます。運営以外はプレイヤー名の絞り込みが無視され、常に自分のチケットだけが返されます。 |
+| `closeTicket(actor, ticketId, reason, comment)` | `TicketStatusChangeResult` | チケットをクローズします。本人と運営が実行できます。`comment` を指定すると、クローズする前にコメントとして書き込み、Discord の通知にもそのコメントを表示します (書き込まない場合は `null`)。 |
+| `reopenTicket(actor, ticketId)` | `TicketStatusChangeResult` | クローズされたチケットをオープンに戻します。運営だけが実行できます。 |
+| `addComment(actor, ticketId, content)` | `TicketCommentResult` | チケットにコメントを書き込みます。クローズされたチケットにも書き込めます。 |
+| `listComments(actor, ticketId, afterId, limit)` | `List<TicketComment>?` | コメントを古い順に取得します。`afterId` より後のコメントだけを返します。チケットが存在しない場合や閲覧できない場合は `null` になります。 |
+
+戻り値はすべて `CompletableFuture` で返されます。
+`limit` は 1 以上を指定してください。100 を超える値は 100 に切り詰められます。
+
+クローズ・再オープン・コメントに成功すると、`/ticket` コマンドで操作した場合と同じように Discord やゲーム内に通知されます (Velocity ではゲーム内には通知されません)。
+
+### クローズの理由
+
+`closeTicket` の `reason` には `TicketCloseReason` を指定します。
+
+| 値 | 説明 |
+|----|------|
+| `DONE` | 対応が完了しました。 |
+| `NOT_PLANNED` | 対応しないことにしました。 |
+| `DUPLICATE` | 他のチケットと重複しています。 |
+
+### 結果
+
+権限が無い場合や入力に誤りがある場合は、例外ではなく結果の値で返されます。
+
+| `TicketStatusChangeResult` | 説明 |
+|---------------------------|------|
+| `Success` | 変更に成功しました。`change.ticket` で変更後のチケットを、`change.comment` でクローズと同時に書き込んだコメントを取得できます。 |
+| `TicketNotFound` | チケットが存在しない、または閲覧できません。 |
+| `NotPermitted` | チケットは閲覧できますが、操作する権限がありません (本人による再オープンなど)。 |
+| `AlreadyClosed` | 既にクローズされています。 |
+| `AlreadyOpen` | 既にオープンしています。 |
+| `BlankComment` | クローズと同時に書き込むコメントが空です。 |
+| `CommentTooLong` | クローズと同時に書き込むコメントが長すぎます。`maxLength` で上限の文字数を取得できます。 |
+
+| `TicketCommentResult` | 説明 |
+|----------------------|------|
+| `Success` | 書き込みに成功しました。`comment` で保存されたコメントを取得できます。 |
+| `TicketNotFound` | チケットが存在しない、または閲覧できません。 |
+| `BlankContent` | 本文が空です。 |
+| `ContentTooLong` | 本文が長すぎます。`maxLength` で上限の文字数を取得できます。 |
+
+ticket 機能が無効な場合 (Velocity で MySQL を使用していない場合を含む) や MoripaUtils が有効化されていない場合は `IllegalStateException` で、`limit` が 1 未満などの不正な引数を指定した場合は `IllegalArgumentException` で例外的に完了します。
+
+## 使用例
+
+```kotlin
+val api = MoripaUtilsAPI.getInstance()
+// 運営として、外部のシステム名でコメントを残してクローズする
+val actor = TicketActor(uuid = null, name = "Support Bot", isStaff = true)
+api.ticket.closeTicket(actor, 42, TicketCloseReason.DONE, "外部のシステムで対応しました").whenComplete { result, error ->
+    if (error != null) {
+        // ticket 機能が無効な場合など
+        return@whenComplete
+    }
+    when (result) {
+        is TicketStatusChangeResult.Success -> logger.info("Closed ticket #${result.change.ticket.id}")
+        TicketStatusChangeResult.AlreadyClosed -> logger.info("Ticket is already closed")
+        else -> logger.warning("Failed to close ticket: $result")
+    }
+}
+```
