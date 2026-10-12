@@ -34,4 +34,16 @@ sealed interface TicketStatusChangeResult {
 
     /** 既にオープンしている */
     data object AlreadyOpen : TicketStatusChangeResult
+
+    /** クローズと同時に書き込むコメントが空 (空白のみを含む) */
+    data object BlankComment : TicketStatusChangeResult
+
+    /**
+     * クローズと同時に書き込むコメントが長すぎる
+     *
+     * @property maxLength 許容される最大文字数
+     */
+    data class CommentTooLong(
+        val maxLength: Int,
+    ) : TicketStatusChangeResult
 }

@@ -197,6 +197,27 @@ class TicketServiceTest {
         assertEquals(listOf(TicketStatus.CLOSED, TicketStatus.OPEN), notifier.statusChanges.map { it.ticket.status })
     }
 
+    @Test
+    @DisplayName("Closes with a comment and notifies it as part of the close")
+    fun closesWithComment() = runBlocking {
+        val ticket = repository.create(TicketSubmission("test", playerUuid, "Steve", LOCATION, "bug", "hello"))
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+
+        // 空のコメントではコメントもクローズも行わない
+        assertEquals(TicketStatusChangeResult.BlankComment, service.closeTicket(staff, ticket.id, TicketCloseReason.DONE, "  "))
+        assertEquals(TicketStatus.OPEN, repository.findById(ticket.id)?.status)
+
+        val result = service.closeTicket(staff, ticket.id, TicketCloseReason.DONE, " 対応しました ")
+        val success = assertInstanceOf(TicketStatusChangeResult.Success::class.java, result)
+        assertEquals("対応しました", success.change.comment?.content)
+        assertEquals(listOf("対応しました"), commentRepository.created.map { it.content })
+
+        // コメント単体では通知せず、クローズの通知にまとめる
+        notificationJob.children.toList().joinAll()
+        assertEquals(emptyList<TicketComment>(), notifier.commented)
+        assertEquals(listOf("対応しました"), notifier.statusChanges.map { it.comment?.content })
+    }
+
     /** create の呼び出しを記録し、連番の id を振って返すリポジトリ */
     private class RecordingRepository : TicketRepository {
         val created = mutableListOf<TicketSubmission>()

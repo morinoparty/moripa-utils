@@ -17,6 +17,8 @@ typesafeConfig = "1.4.9"
 exposed = "1.5.0"
 # テスト用。Paper では JAR に同梱せず、サーバー同梱の sqlite-jdbc (Paper 26.x では 3.49.1.0) を実行時に使う
 sqlite = "3.53.4.0"
+# Velocity で共有データベース (MySQL) に接続するための JDBC ドライバー。Paper では本体同梱のものを使う
+mysql = "26.7.0"
 mineauth = "0.5.1"
 # S3 互換ストレージのクライアント。JAR に同梱せず、Paper の PluginLoader で実行時に解決する
 awsSdk = "2.55.3"
@@ -57,6 +59,7 @@ exposed-core = { group = "org.jetbrains.exposed", name = "exposed-core", version
 exposed-jdbc = { group = "org.jetbrains.exposed", name = "exposed-jdbc", version.ref = "exposed" }
 exposed-java-time = { group = "org.jetbrains.exposed", name = "exposed-java-time", version.ref = "exposed" }
 sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
+mysql-connector = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql" }
 
 # MineAuth の公開 API (Web からのチケット操作などで連携する。実行時は MineAuth プラグイン側のクラスを使う)
 mineauth-api = { group = "party.morino", name = "mineauth-api", version.ref = "mineauth" }

@@ -25,19 +25,24 @@ dependencies {
 ```
 
 API のクラスは Java 25 向けにコンパイルされています。
-また、API は MoripaUtils の有効化後に使用できるため、`plugin.yml` や `paper-plugin.yml` で MoripaUtils への依存関係を宣言してください。
+また、API は MoripaUtils の有効化後に使用できるため、MoripaUtils への依存関係を宣言してください。
+Paper では `plugin.yml` や `paper-plugin.yml` に、Velocity では `@Plugin` アノテーションの `dependencies` に `moripa-utils` を指定します。
 
 ## API の取得
 
-`MoripaUtilsAPI.getInstance()` で API を取得し、機能ごとのプロパティから各機能の API を使用します。
+API は Paper / Velocity で共通の `MoripaUtilsAPI` と、Paper 専用の機能を含む `MoripaUtilsPaperAPI` に分かれています。
+どちらも `getInstance()` で取得し、機能ごとのプロパティから各機能の API を使用します。
 
-| プロパティ | 説明 |
-|-----------|------|
-| `schematic` | schematic のアップロードを行います。詳細は [Schematic](./schematic#公開-api) を参照してください。 |
-| `ticket` | チケットの閲覧・クローズ・コメントを行います。詳細は [チケットの公開 API](./ticket/api) を参照してください。 |
+| プロパティ | 取得元 | 説明 |
+|-----------|--------|------|
+| `ticket` | `MoripaUtilsAPI` / `MoripaUtilsPaperAPI` | チケットの閲覧・クローズ・コメントを行います。詳細は [チケットの公開 API](./ticket/api) を参照してください。 |
+| `schematic` | `MoripaUtilsPaperAPI` | schematic のアップロードを行います。Paper でのみ使用できます。詳細は [Schematic](./schematic#公開-api) を参照してください。 |
 
 ```kotlin
+// Paper / Velocity の両方で使用できる
 val api = MoripaUtilsAPI.getInstance()
+// Paper でのみ使用できる (Velocity で呼ぶと IllegalStateException になる)
+val paperApi = MoripaUtilsPaperAPI.getInstance()
 ```
 
 API のメソッドは `CompletableFuture` で結果を返します。

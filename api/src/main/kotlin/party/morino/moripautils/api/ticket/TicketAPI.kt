@@ -57,13 +57,21 @@ interface TicketAPI {
      * チケットをクローズする
      *
      * 本人は自分のチケットを、運営はすべてのチケットをクローズできる。成功すると Discord やゲーム内に通知する。
+     * [comment] を指定すると、クローズする前にコメントとして書き込み、Discord の通知にもそのコメントを載せる。
      *
      * @param actor クローズする人
      * @param ticketId チケットの id
      * @param reason クローズする理由
-     * @return 変更結果 (既にクローズされている場合は [TicketStatusChangeResult.AlreadyClosed])
+     * @param comment クローズと同時に書き込むコメント (書き込まない場合は null。前後の空白は取り除いて保存する)
+     * @return 変更結果 (既にクローズされている場合は [TicketStatusChangeResult.AlreadyClosed]、
+     *   コメントが不正な場合は [TicketStatusChangeResult.BlankComment] / [TicketStatusChangeResult.CommentTooLong])
      */
-    fun closeTicket(actor: TicketActor, ticketId: Long, reason: TicketCloseReason): CompletableFuture<TicketStatusChangeResult>
+    fun closeTicket(
+        actor: TicketActor,
+        ticketId: Long,
+        reason: TicketCloseReason,
+        comment: String?,
+    ): CompletableFuture<TicketStatusChangeResult>
 
     /**
      * クローズされたチケットをオープンに戻す

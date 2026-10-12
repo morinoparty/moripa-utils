@@ -19,6 +19,7 @@ import party.morino.moripautils.common.ticket.TicketCommentRepository
 import party.morino.moripautils.common.ticket.TicketNotifier
 import party.morino.moripautils.common.ticket.TicketRepository
 import party.morino.moripautils.common.ticket.TicketService
+import party.morino.moripautils.common.ticket.api.TicketApiScope
 import party.morino.moripautils.common.ticket.database.ExposedTicketCommentRepository
 import party.morino.moripautils.common.ticket.database.ExposedTicketRepository
 import party.morino.moripautils.common.ticket.database.TicketDatabaseSchema
@@ -28,16 +29,15 @@ import java.util.logging.Logger
 /**
  * ticket 機能の Koin モジュールを生成するファクトリ
  *
- * Exposed に依存するクラスを含むため、ticket 機能が有効な Paper でだけ読み込むこと
- * (Velocity の JAR には Exposed を同梱していない)。
+ * Paper では ticket 機能が有効な場合に、Velocity では ticket 機能が有効で MySQL を使う場合に読み込む。
  * チケットは共有データベースに保存するため、[party.morino.moripautils.common.database.di.DatabaseModule] と一緒に読み込む。
  */
 object TicketModule {
     /**
-     * ticket 機能の共通部分 (リポジトリ / Webhook 通知 / サービス) のモジュールを生成する
+     * ticket 機能の共通部分 (リポジトリ / Webhook 通知 / サービス / 公開 API のスコープ) のモジュールを生成する
      *
      * @param logger 通知の失敗などを記録するロガー
-     * @return リポジトリ / Webhook 通知 / サービスをシングルトンとして提供する Koin モジュール
+     * @return リポジトリ / Webhook 通知 / サービス / 公開 API のスコープをシングルトンとして提供する Koin モジュール
      */
     fun create(logger: Logger): Module = module {
         // 共有データベースの tickets テーブルに保存する (接続先は config.conf の database で決まる)
@@ -49,5 +49,7 @@ object TicketModule {
         single { TicketWebhookNotifier(logger) } bind TicketNotifier::class
         // 通知は送信結果の返却と切り離して行う。SupervisorJob により 1 件の失敗が他の通知を巻き込まない
         single { TicketService(logger, CoroutineScope(SupervisorJob() + Dispatchers.IO)) }
+        // 公開 API (MoripaUtilsAPI.ticket) の処理を実行するスコープ。無効化時に TicketService と一緒に閉じる
+        single { TicketApiScope() }
     }
 }

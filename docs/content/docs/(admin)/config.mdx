@@ -126,7 +126,8 @@ ticket {
 ```
 
 Velocity では、`server` のデフォルト値が `proxy`、`observability.http.port` のデフォルト値が `9226` になります。
-チケット機能、データベース、ストレージは Paper 専用のため、`ticket` ブロック、`database` ブロック、`storage` ブロックは Velocity では使用されません (値の検証は行われます)。
+ストレージは Paper 専用のため、`storage` ブロックは Velocity では使用されません (値の検証は行われます)。
+`ticket` ブロックと `database` ブロックは、Velocity ではチケットの [公開 API](./ticket/api) にのみ使用されます (`database.type` が `mysql` の場合のみ)。
 同様に、お知らせは Velocity 専用のため、`announcement` ブロックは Paper では使用されません。
 
 ## 共通の項目

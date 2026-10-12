@@ -17,7 +17,7 @@ import java.nio.file.Path
 /**
  * 共有データベースの Koin モジュールを生成するファクトリ
  *
- * Exposed に依存するため、データベースを使う機能 (ticket など) が有効な Paper でだけ読み込むこと。
+ * データベースを使う機能 (ticket など) が有効な場合にだけ読み込む (Velocity では MySQL の場合のみ)。
  */
 object DatabaseModule {
     /**

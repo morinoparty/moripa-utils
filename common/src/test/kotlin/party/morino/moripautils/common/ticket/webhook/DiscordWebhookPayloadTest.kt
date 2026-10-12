@@ -120,6 +120,21 @@ class DiscordWebhookPayloadTest {
     }
 
     @Test
+    @DisplayName("Shows the close comment as the embed message")
+    fun showsCloseCommentAsMessage() {
+        val closed = ticket.copy(status = TicketStatus.CLOSED, closeReason = TicketCloseReason.DONE)
+        val staff = TicketActor(null, "discord-bot", isStaff = true)
+        val comment = TicketComment(1, closed.id, null, "discord-bot", TicketCommentAuthorType.STAFF, "対応しました", Instant.parse("2026-08-18T13:05:00Z"))
+        val change = TicketStatusChange(closed, staff, Instant.parse("2026-08-18T13:05:00Z"), comment)
+
+        val payload = DiscordWebhookPayload.createStatusChange(change, null, TicketWebhookConfig())
+
+        // MESSAGE 欄はチケットの本文ではなくクローズ時のコメントになる
+        val field = payload["embeds"]!!.jsonArray.single().jsonObject["fields"]!!.jsonArray.single().jsonObject
+        assertEquals("対応しました", field["value"]!!.jsonPrimitive.content)
+    }
+
+    @Test
     @DisplayName("Resolves name and UUID placeholders in the avatar URL template")
     fun resolvesAvatarTemplate() {
         assertEquals(

@@ -6,10 +6,8 @@
  * You should have received a copy of the CC0 Public Domain Dedication along with this software.
  * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
-package party.morino.moripautils.paper.api
+package party.morino.moripautils.common.ticket.api
 
-import com.github.shynixn.mccoroutine.bukkit.scope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.future
 import party.morino.moripautils.api.model.ticket.Ticket
 import party.morino.moripautils.api.model.ticket.TicketActor
@@ -21,16 +19,15 @@ import party.morino.moripautils.api.model.ticket.TicketStatusChangeResult
 import party.morino.moripautils.api.ticket.TicketAPI
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.ticket.TicketService
-import party.morino.moripautils.paper.MoripaUtils
 import java.util.concurrent.CompletableFuture
 
 /**
- * [TicketAPI] の Paper 向けの実装 (Adapter)
+ * [TicketAPI] の実装 (Adapter。Paper / Velocity で共通)
  *
  * 権限の判定や通知は [TicketService] にそのまま任せ、ここでは Future への変換と引数の検証だけを行う。
  * 再読み込みのたびに Koin コンテナが作り直されるため、サービスは呼び出しのたびにコンテナから取り出す。
  */
-class PaperTicketAPI : TicketAPI {
+class TicketAPIAdapter : TicketAPI {
     override fun getTicket(actor: TicketActor, ticketId: Long): CompletableFuture<Ticket?> =
         runWithService { service -> service.findAccessibleTicket(actor, ticketId) }
 
@@ -54,7 +51,8 @@ class PaperTicketAPI : TicketAPI {
         actor: TicketActor,
         ticketId: Long,
         reason: TicketCloseReason,
-    ): CompletableFuture<TicketStatusChangeResult> = runWithService { service -> service.closeTicket(actor, ticketId, reason) }
+        comment: String?,
+    ): CompletableFuture<TicketStatusChangeResult> = runWithService { service -> service.closeTicket(actor, ticketId, reason, comment) }
 
     override fun reopenTicket(actor: TicketActor, ticketId: Long): CompletableFuture<TicketStatusChangeResult> =
         runWithService { service -> service.reopenTicket(actor, ticketId) }
@@ -87,10 +85,10 @@ class PaperTicketAPI : TicketAPI {
         if (limit < 1) IllegalArgumentException("limit must be at least 1, but was $limit") else null
 
     /**
-     * プラグインのコルーチンスコープでチケットの処理を行い、結果を Future に変換する
+     * 公開 API 用のコルーチンスコープでチケットの処理を行い、結果を Future に変換する
      *
-     * プラグインが無効化されるとスコープごとキャンセルされ、Future もキャンセル扱いで完了する。
-     * データベースへのアクセスでメインスレッドを止めないよう I/O スレッドで実行する。
+     * プラグインの無効化や再読み込みでスコープが閉じられると、Future もキャンセル扱いで完了する。
+     * データベースへのアクセスで呼び出し元のスレッドを止めないよう I/O スレッドで実行する。
      *
      * @param block サービスを受け取って結果を返す処理
      * @return 処理結果で完了する Future。ticket 機能が無効な場合は [IllegalStateException] で完了する
@@ -99,10 +97,10 @@ class PaperTicketAPI : TicketAPI {
         // プラグインが有効になっていない場合はコンテナが存在しない
         val koin = MoripaUtilsKoinContext.getOrNull()
             ?: return CompletableFuture.failedFuture(IllegalStateException("MoripaUtils is not enabled"))
-        // TicketService は ticket 機能が有効な場合だけ読み込まれる
+        // TicketService は ticket 機能が有効な場合だけ読み込まれる (Velocity では MySQL を使う場合だけ)
         val service = koin.getOrNull<TicketService>()
             ?: return CompletableFuture.failedFuture(IllegalStateException("Ticket feature is disabled"))
-        val plugin = koin.get<MoripaUtils>()
-        return plugin.scope.future(Dispatchers.IO) { block(service) }
+        val apiScope = koin.get<TicketApiScope>()
+        return apiScope.scope.future { block(service) }
     }
 }

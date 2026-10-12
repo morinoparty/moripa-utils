@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
  *
  * 各機能は同じデータベースの中に機能ごとのテーブル (例: ticket 機能の tickets) を作って使う。
  * [type] で選んだ方のブロック ([sqlite] / [mysql]) だけが使われ、もう一方は無視される。
- * Velocity はデータベースを使う機能を持たないため、この設定は Paper でのみ使われる。
+ * Velocity ではチケットの公開 API だけが使い、Paper と共有できる MySQL の場合にだけ接続する。
  *
  * @property type 接続するデータベースの種類
  * @property sqlite type = sqlite のときの接続設定
