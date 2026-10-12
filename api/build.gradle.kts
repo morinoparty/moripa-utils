@@ -10,7 +10,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
-    // 外部プラグインが依存できるよう、JitPack で Maven 成果物として公開する
+    // morinoparty の他のプラグインが依存できるよう、GitHub Packages に Maven 成果物として公開する
     `maven-publish`
 }
 
@@ -31,9 +31,19 @@ java {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            // JitPack は公開されたモジュールが 1 つだけの場合、group / artifact を com.github.morinoparty:moripa-utils に読み替えて配布する
-            artifactId = "api"
+            // party.morino:api では何の API か分からないため、プロジェクト名を付ける
+            artifactId = "moripa-utils-api"
             from(components["java"])
+        }
+    }
+    repositories {
+        // リリース時に GitHub Actions (upload.yml) から publish する。認証には GITHUB_TOKEN を使う
+        maven("https://maven.pkg.github.com/morinoparty/moripa-utils") {
+            name = "GitHubPackages"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
     }
 }

@@ -6,22 +6,43 @@ description: 他のプラグインから MoripaUtils の機能を使用するた
 # 公開 API
 
 MoripaUtils は、他のプラグインから機能を使用するための公開 API (`api` モジュール) を提供しています。
-`api` モジュールは [JitPack](https://jitpack.io/#morinoparty/moripa-utils) で配布しています。
+`api` モジュールは [GitHub Packages](https://github.com/morinoparty/moripa-utils/packages) で配布しています。
+リリースを公開すると、GitHub Actions が自動的に publish します。
 
 ## 依存関係の追加
 
-JitPack のリポジトリを追加し、`api` モジュールに依存します。
-バージョンには GitHub のリリースのタグ (例: `v1.2.3`) を指定します。
+GitHub Packages のリポジトリを追加し、`party.morino:moripa-utils-api` に依存します。
+バージョンには GitHub のリリースのタグから `v` を除いたもの (例: タグ `v0.1.11` なら `0.1.11`) を指定します。
 MoripaUtils 本体が実行時に API のクラスを提供するため、`compileOnly` で依存してください。
 
 ```kotlin title="build.gradle.kts"
 repositories {
-    maven("https://jitpack.io")
+    maven("https://maven.pkg.github.com/morinoparty/moripa-utils") {
+        // GitHub Packages は公開パッケージでも取得に認証が必要
+        credentials {
+            username = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull
+            password = providers.gradleProperty("gpr.key").orElse(providers.environmentVariable("GITHUB_TOKEN")).orNull
+        }
+    }
 }
 
 dependencies {
-    compileOnly("com.github.morinoparty:moripa-utils:v1.2.3")
+    compileOnly("party.morino:moripa-utils-api:0.1.11")
 }
+```
+
+### 認証
+
+GitHub Packages の Maven リポジトリは、公開パッケージであっても取得に GitHub のトークンが必要です。
+
+| 環境 | 設定 |
+|------|------|
+| 手元 | `read:packages` 権限を持つトークンを `~/.gradle/gradle.properties` の `gpr.user` (GitHub のユーザー名) と `gpr.key` (トークン) に設定します。GitHub CLI を使っている場合は、`gh auth token` で表示されるトークンも使えます。 |
+| GitHub Actions | ワークフローに `permissions: packages: read` を付け、`GITHUB_ACTOR` と `GITHUB_TOKEN` (`secrets.GITHUB_TOKEN`) を環境変数に設定します。 |
+
+```properties title="~/.gradle/gradle.properties"
+gpr.user=<GitHub のユーザー名>
+gpr.key=<read:packages 権限を持つトークン>
 ```
 
 API のクラスは Java 25 向けにコンパイルされています。

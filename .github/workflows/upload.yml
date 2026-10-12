@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  # api モジュールを GitHub Packages に publish するため
+  packages: write
   id-token: write
   attestations: write
 
@@ -14,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_ACTOR: ${{ secrets.GITHUB_ACTOR }}
+      GITHUB_ACTOR: ${{ github.actor }}
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -43,6 +45,10 @@ jobs:
       # 並列ビルド
       - name: Build with Gradle (parallel)
         run: ./gradlew build -x test --parallel
+
+      # api モジュールを GitHub Packages に publish する (バージョンはリリースのタグから v を除いたもの)
+      - name: Publish API to GitHub Packages
+        run: ./gradlew :api:publish -x test
 
       # ファイル名を変更
       - name: Rename artifacts
