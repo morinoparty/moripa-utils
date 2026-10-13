@@ -1,5 +1,5 @@
 [versions]
-paper = "26.2.build.129-stable"
+paper = "26.2.build.133-stable"
 velocity = "4.2.0"
 kotlin = "2.4.20"
 mccoroutine = "2.23.0"
