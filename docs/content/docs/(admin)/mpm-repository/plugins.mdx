@@ -10,10 +10,17 @@ description: morinoparty の mpm リポジトリにプラグインや子リポ�
 
 ## プラグインを追加する
 
-morinoparty のプラグインを追加する場合は、`docs/mpm/plugins/` に `<プラグイン名>.json` を 1 つ追加します。
-たとえば MoripaUtils の定義は次のとおりです。
+morinoparty のプラグインを追加する場合は、対応するプラットフォームのディレクトリに `<プラグイン名>.json` を 1 つ追加します。
 
-```json title="docs/mpm/plugins/MoripaUtils.json"
+| ディレクトリ | 配信されるインデックス |
+|-------------|----------------------|
+| `docs/mpm/paper/plugins/` | `https://utils.plugin.morino.party/mpm/paper/index.json` |
+| `docs/mpm/velocity/plugins/` | `https://utils.plugin.morino.party/mpm/velocity/index.json` |
+
+Paper と Velocity の両方に対応するプラグインは、両方のディレクトリに同じ名前で定義を置きます。
+たとえば MoripaUtils の Paper 向けの定義は次のとおりです。
+
+```json title="docs/mpm/paper/plugins/MoripaUtils.json"
 {
   "$schema": "https://repo.mpm.nikomaru.dev/schema/plugin-info/v1.json",
   "id": "MoripaUtils",
@@ -45,6 +52,7 @@ morinoparty のプラグインを追加する場合は、`docs/mpm/plugins/` に
 
 `repositories` の各エントリには `type` (`github`、`modrinth`、`spigotmc`、`hangar` など) と `id` を指定します。
 GitHub のリリースに複数の JAR が添付されている場合は、`fileNameRegex` で対象のファイルを選びます。
+MoripaUtils のように 1 つのリリースに Paper 版と Velocity 版の JAR を添付している場合は、Paper 向けの定義では `MoripaUtils-paper-.*\\.jar$`、Velocity 向けの定義では `MoripaUtils-velocity-.*\\.jar$` のように、それぞれのプラットフォームの JAR だけを選ぶように書きます。
 その他のフィールドについては、mpm の [PluginInfo スキーマ](https://repo.mpm.nikomaru.dev/schema/plugin-info/v1.json) を参照してください。
 
 プラグイン名には英数字、`_`、`-` だけが使えます。
@@ -57,9 +65,10 @@ GitHub のリリースに複数の JAR が添付されている場合は、`file
 ## 子リポジトリを追加する
 
 個別のプラグインが自身のドキュメントサイトなどで独自のインデックスを配信している場合は、そのインデックスを子リポジトリとしてリンクします。
-子リポジトリを追加するには、`docs/mpm/children.json` にエントリを 1 件追加します。
+子リポジトリを追加するには、対応するプラットフォームの `docs/mpm/<platform>/children.json` にエントリを 1 件追加します。
+ファイルが無い場合は子リポジトリなしとして扱われます。
 
-```json title="docs/mpm/children.json"
+```json title="docs/mpm/paper/children.json"
 [
   {
     "index": "https://mineauth.plugin.morino.party/mpm/paper/index.json"
@@ -88,5 +97,5 @@ cd docs
 pnpm run build:mpm-index
 ```
 
-生成された `docs/public/mpm/paper/index.json` に追加したプラグインやリンクが含まれていれば完了です。
+生成された `docs/public/mpm/<platform>/index.json` に追加したプラグインやリンクが含まれていれば完了です。
 変更を `main` ブランチにマージすると、ドキュメントサイトのデプロイとともに公開されます。

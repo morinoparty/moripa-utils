@@ -7,6 +7,7 @@ description: このサイトが配信する morinoparty の mpm リポジトリ�
 
 このサイト (`utils.plugin.morino.party`) は、Minecraft プラグインマネージャー [mpm](https://mpm.plugin.morino.party) のリモートリポジトリとして、morinoparty のプラグインの定義を配信します。
 morinoparty が開発しているプラグインの定義に加えて、MineAuth や MoripaFishing などの個別プラグインが配信する子リポジトリへのリンクを持ちます。
+Paper と Velocity では配布する JAR が異なるため、mpm の中央リポジトリと同様に、Paper 向けと Velocity 向けのインデックスを分けて配信します。
 
 このリポジトリは mpm の中央リポジトリ (`repo.mpm.nikomaru.dev`) からは参照されていません。
 mpm 自身の定義は中央リポジトリが持っているため、このリポジトリには含まれません。
@@ -14,6 +15,7 @@ mpm 自身の定義は中央リポジトリが持っているため、このリ�
 ## リポジトリの追加
 
 このリポジトリを利用する場合は、mpm の `config.json` にリモートソースとして追加します。
+Paper サーバーでは Paper 向けのインデックスを指定します。
 
 ```json
 {
@@ -22,13 +24,26 @@ mpm 自身の定義は中央リポジトリが持っているため、このリ�
 }
 ```
 
+Velocity プロキシでは、Velocity 版の mpm の `config.json` に Velocity 向けのインデックスを指定します。
+
+```json
+{
+    "type": "remote",
+    "url": "https://utils.plugin.morino.party/mpm/velocity/index.json"
+}
+```
+
+Velocity で Paper 向けのインデックスを指定すると、Paper 向けの JAR を取得しようとしてインストールに失敗します。
+Velocity での mpm の使い方は mpm の [Velocity で使う](https://mpm.plugin.morino.party/docs/usage/velocity) を参照してください。
+
 複数のソースは `config.json` の並び順で優先され、同名のプラグインは先に見つかった定義が採用されます。
 設定の詳細は mpm の [config.json の仕様](https://mpm.plugin.morino.party/docs/format/config) を参照してください。
 
 ## リポジトリグラフ
 
 mpm のクライアントは、このサイトの `index.json` を起点に、`children` に書かれたリンクを再帰的にたどってカタログを組み立てます。
-このサイトの位置付けは次の図のとおりです。
+Paper 向けのインデックスの位置付けは次の図のとおりです。
+Velocity 向けのインデックスは、現在は子リポジトリを持ちません。
 
 ```mermaid
 graph TD
@@ -48,17 +63,20 @@ graph TD
 
 | URL | 内容 |
 |-----|------|
-| `https://utils.plugin.morino.party/mpm/paper/index.json` | morinoparty のプラグイン定義と子リポジトリへのリンクをまとめたインデックス |
+| `https://utils.plugin.morino.party/mpm/paper/index.json` | Paper 向けの morinoparty のプラグイン定義と子リポジトリへのリンクをまとめたインデックス |
+| `https://utils.plugin.morino.party/mpm/velocity/index.json` | Velocity 向けの morinoparty のプラグイン定義をまとめたインデックス |
 
-`index.json` はドキュメントサイトのビルド時に `docs/scripts/build-mpm-index.mjs` によって生成されます。
+どちらの `index.json` もドキュメントサイトのビルド時に `docs/scripts/build-mpm-index.mjs` によって生成されます。
 生成元となるファイルは次のとおりです。
 
 | ファイル | 内容 |
 |---------|------|
-| `docs/mpm/plugins/*.json` | プラグインごとの定義 (1 プラグインにつき 1 ファイル) |
-| `docs/mpm/children.json` | 子リポジトリへのリンクの一覧 |
+| `docs/mpm/<platform>/plugins/*.json` | プラグインごとの定義 (1 プラグインにつき 1 ファイル) |
+| `docs/mpm/<platform>/children.json` | 子リポジトリへのリンクの一覧 (任意) |
 
-生成された `docs/public/mpm/paper/index.json` はビルド成果物であるため、Git の管理対象には含まれません。
+`<platform>` は `paper` または `velocity` です。
+生成された `docs/public/mpm/<platform>/index.json` はビルド成果物であるため、Git の管理対象には含まれません。
+ビルドスクリプトはすべてのプラットフォームの定義を検証してから書き出すため、どちらかに誤りがある場合はどちらのインデックスも生成されません。
 `docs/` 以下の変更が `main` ブランチにマージされると、ドキュメントのデプロイワークフローによってサイトと一緒に `index.json` が再生成され、公開されます。
 
 手元で生成結果を確認する場合は、次のコマンドを実行します。
