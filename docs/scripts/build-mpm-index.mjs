@@ -1,18 +1,20 @@
 /**
  * mpm のリポジトリインデックス（index.json）を生成する。
  *
- * `docs/mpm/plugins/*.json`（真実の源・コミット対象）と `docs/mpm/children.json`（子リポジトリへのリンク）を
- * 1枚のバンドルに束ね、`docs/public/mpm/paper/index.json`（生成物・gitignore）として書き出す。
+ * プラットフォーム（paper / velocity）ごとに、`docs/mpm/<platform>/plugins/*.json`（真実の源・コミット対象）と
+ * `docs/mpm/<platform>/children.json`（子リポジトリへのリンク・任意）を1枚のバンドルに束ね、
+ * `docs/public/mpm/<platform>/index.json`（生成物・gitignore）として書き出す。
+ * Paper と Velocity では配布する JAR が異なるため、mpm の中央リポジトリと同じくカタログを分けて配信する。
  *
  * このサイト（utils.plugin.morino.party）は mpm リポジトリグラフにおける morinoparty のノードである。
  * 中央リポジトリ（repo.mpm.nikomaru.dev）からは参照されておらず、利用者が config.json にリモートソースとして追加する。
  * mpm（クライアント）はここを起点に children をたどって MineAuth や MoripaFishing などの子リポジトリを読む。
  * mpm 自身の定義は中央リポジトリが持つため、ここには置かない。
  *
- * morinoparty のプラグインを追加するときは docs/mpm/plugins/ に JSON を1つ足すだけでよい。
- * 子リポジトリを追加するときは docs/mpm/children.json にリンクを1件足す。
+ * morinoparty のプラグインを追加するときは docs/mpm/<platform>/plugins/ に JSON を1つ足すだけでよい。
+ * 子リポジトリを追加するときは docs/mpm/<platform>/children.json にリンクを1件足す。
  *
- * 定義は中央リポジトリの repo/public/paper/plugins/ と同じ形式のため、
+ * 定義は中央リポジトリのプラグイン定義と同じ形式のため、
  * 変換は中央の repo/scripts/build.ts と同じく `$schema` を落とすだけに留める
  * （downloadUrl / fileNameTemplate などのフィールドは削らない）。
  *
@@ -24,9 +26,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const docsDir = join(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceDir = join(docsDir, "mpm", "plugins");
-const childrenFile = join(docsDir, "mpm", "children.json");
-const outputFile = join(docsDir, "public", "mpm", "paper", "index.json");
+
+// 生成するカタログ。name はインデックスの名前（中央リポジトリの Velocity カタログと同じく接尾辞で区別する）
+const PLATFORMS = [
+    { platform: "paper", name: "morinoparty" },
+    { platform: "velocity", name: "morinoparty-velocity" },
+];
 
 // 中央リポジトリの build.ts が配信している repository-index スキーマのURL
 const REPOSITORY_INDEX_SCHEMA = "https://repo.mpm.nikomaru.dev/schema/repository-index/v1.json";
@@ -43,10 +48,13 @@ const ALLOWED_SOURCE_PATTERN = /^[a-z]+:[^\s]+$/;
 const errors = [];
 
 /**
- * docs/mpm/plugins/*.json を読み込み、検証してプラグイン名 -> 定義のマップにする。
+ * docs/mpm/<platform>/plugins/*.json を読み込み、検証してプラグイン名 -> 定義のマップにする。
  * 公開バンドルには `$schema` を含めない（手元のIDE補完用でクライアントには不要）。
+ *
+ * @param platform プラットフォーム名（エラーメッセージの接頭辞にも使う）
+ * @param sourceDir プラグイン定義のディレクトリ
  */
-const loadPlugins = () => {
+const loadPlugins = (platform, sourceDir) => {
     const files = readdirSync(sourceDir)
         .filter((file) => file.endsWith(".json"))
         .sort();
@@ -58,15 +66,15 @@ const loadPlugins = () => {
 
         // ファイル名と id の不一致はクライアント側で破棄されるため、ここで落とす
         if (definition.id !== name) {
-            errors.push(`${file}: id (${definition.id}) がファイル名と一致しません`);
+            errors.push(`${platform}/plugins/${file}: id (${definition.id}) がファイル名と一致しません`);
             continue;
         }
         if (!PLUGIN_NAME_PATTERN.test(name)) {
-            errors.push(`${file}: プラグイン名に使えない文字が含まれています`);
+            errors.push(`${platform}/plugins/${file}: プラグイン名に使えない文字が含まれています`);
             continue;
         }
         if (!Array.isArray(definition.repositories) || definition.repositories.length === 0) {
-            errors.push(`${file}: repositories が空です`);
+            errors.push(`${platform}/plugins/${file}: repositories が空です`);
             continue;
         }
         // type と id が欠けた配布元はクライアントが解決できないため、ここで落とす
@@ -74,7 +82,7 @@ const loadPlugins = () => {
             (repository) => !repository.type || !repository.id,
         );
         if (invalidRepository) {
-            errors.push(`${file}: repositories に type または id が無いエントリがあります`);
+            errors.push(`${platform}/plugins/${file}: repositories に type または id が無いエントリがあります`);
             continue;
         }
 
@@ -85,14 +93,17 @@ const loadPlugins = () => {
 };
 
 /**
- * docs/mpm/children.json（子リポジトリへのリンク一覧）を読み込んで検証する。
+ * docs/mpm/<platform>/children.json（子リポジトリへのリンク一覧）を読み込んで検証する。
  * ファイルが無ければ子なしとして扱う。
+ *
+ * @param platform プラットフォーム名（エラーメッセージの接頭辞にも使う）
+ * @param childrenFile children.json のパス
  */
-const loadChildren = () => {
+const loadChildren = (platform, childrenFile) => {
     if (!existsSync(childrenFile)) return [];
     const children = JSON.parse(readFileSync(childrenFile, "utf-8"));
     if (!Array.isArray(children)) {
-        errors.push("children.json: 配列である必要があります");
+        errors.push(`${platform}/children.json: 配列である必要があります`);
         return [];
     }
 
@@ -100,11 +111,11 @@ const loadChildren = () => {
     const seen = new Set();
     for (const link of children) {
         if (typeof link?.index !== "string" || !CHILD_INDEX_PATTERN.test(link.index)) {
-            errors.push(`children.json: index は https で始まり .json で終わるURLである必要があります (${link?.index})`);
+            errors.push(`${platform}/children.json: index は https で始まり .json で終わるURLである必要があります (${link?.index})`);
             continue;
         }
         if (seen.has(link.index)) {
-            errors.push(`children.json: 重複したリンクがあります (${link.index})`);
+            errors.push(`${platform}/children.json: 重複したリンクがあります (${link.index})`);
         }
         seen.add(link.index);
         // allowedSources は任意。指定した場合だけ形式を検証する
@@ -115,15 +126,23 @@ const loadChildren = () => {
                     (source) => typeof source === "string" && ALLOWED_SOURCE_PATTERN.test(source),
                 );
             if (!valid) {
-                errors.push(`children.json: allowedSources は "type:id" 形式の文字列配列である必要があります (${link.index})`);
+                errors.push(`${platform}/children.json: allowedSources は "type:id" 形式の文字列配列である必要があります (${link.index})`);
             }
         }
     }
     return children;
 };
 
-const plugins = loadPlugins();
-const children = loadChildren();
+// すべてのプラットフォームを検証してから書き出す（一部だけ更新された状態で公開しないため）
+const indexes = PLATFORMS.map(({ platform, name }) => {
+    const platformDir = join(docsDir, "mpm", platform);
+    return {
+        platform,
+        name,
+        plugins: loadPlugins(platform, join(platformDir, "plugins")),
+        children: loadChildren(platform, join(platformDir, "children.json")),
+    };
+});
 
 if (errors.length > 0) {
     for (const error of errors) {
@@ -132,18 +151,22 @@ if (errors.length > 0) {
     process.exit(1);
 }
 
-const index = {
-    $schema: REPOSITORY_INDEX_SCHEMA,
-    schemaVersion: 1,
-    name: "morinoparty",
-    generated: new Date().toISOString(),
-    plugins,
-    children,
-};
+const generated = new Date().toISOString();
+for (const { platform, name, plugins, children } of indexes) {
+    const index = {
+        $schema: REPOSITORY_INDEX_SCHEMA,
+        schemaVersion: 1,
+        name,
+        generated,
+        plugins,
+        children,
+    };
 
-mkdirSync(dirname(outputFile), { recursive: true });
-writeFileSync(outputFile, `${JSON.stringify(index, null, 2)}\n`);
+    const outputFile = join(docsDir, "public", "mpm", platform, "index.json");
+    mkdirSync(dirname(outputFile), { recursive: true });
+    writeFileSync(outputFile, `${JSON.stringify(index, null, 2)}\n`);
 
-console.log(
-    `✓ Generated mpm index with ${Object.keys(plugins).length} plugins and ${children.length} children`,
-);
+    console.log(
+        `✓ Generated mpm ${platform} index with ${Object.keys(plugins).length} plugins and ${children.length} children`,
+    );
+}
