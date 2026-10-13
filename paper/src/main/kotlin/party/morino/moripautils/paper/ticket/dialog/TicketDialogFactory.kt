@@ -49,7 +49,7 @@ class TicketDialogFactory : MoripaUtilsKoinComponent {
             .canCloseWithEscape(true)
             // 送信 / キャンセルのどちらでも Dialog を閉じる (結果はチャットで伝える)
             .afterAction(DialogBase.DialogAfterAction.CLOSE)
-            .body(listOf(DialogBody.plainMessage(Component.text("運営へのお問い合わせ内容を入力してください。"))))
+            .body(listOf(DialogBody.plainMessage(Component.text("お問い合わせ内容を入力してください。"))))
             .inputs(listOf(createCategoryInput(), createContentInput()))
             .build()
         return Dialog.create { factory ->
