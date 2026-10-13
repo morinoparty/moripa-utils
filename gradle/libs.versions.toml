@@ -14,7 +14,7 @@ junit = "6.1.3"
 mockBukkit = "4.116.1"
 prometheus = "1.9.0"
 typesafeConfig = "1.4.9"
-exposed = "1.5.0"
+exposed = "1.5.1"
 # テスト用。Paper では JAR に同梱せず、サーバー同梱の sqlite-jdbc (Paper 26.x では 3.49.1.0) を実行時に使う
 sqlite = "3.53.4.0"
 # Velocity で共有データベース (MySQL) に接続するための JDBC ドライバー。Paper では本体同梱のものを使う
