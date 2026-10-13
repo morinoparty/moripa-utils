@@ -10,6 +10,7 @@
 package party.morino.moripautils.paper.ticket.view
 
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.koin.core.component.inject
 import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
@@ -34,39 +35,42 @@ class TicketThreadPresenter : MoripaUtilsKoinComponent {
     /**
      * スレッドを表示する
      *
-     * @param player 表示先のプレイヤー
+     * @param sender 表示先 (プレイヤーまたはコンソール)
      * @param ticket 表示するチケット
      * @param comments 表示するコメント (古い順)
      * @param hasOlder 表示しきれなかった古いコメントがあるかどうか
      */
-    fun present(player: Player, ticket: Ticket, comments: List<TicketComment>, hasOlder: Boolean) {
+    fun present(sender: CommandSender, ticket: Ticket, comments: List<TicketComment>, hasOlder: Boolean) {
         // 設定からカテゴリーが削除されている場合は id をそのまま表示する
         val categoryName = config.categories.firstOrNull { it.id == ticket.categoryId }?.name ?: ticket.categoryId
-        player.sendRichMessage(
+        sender.sendRichMessage(
             "<gold>===== お問い合わせ #<id> =====",
             Placeholder.unparsed("id", ticket.id.toString()),
         )
-        player.sendRichMessage(
+        sender.sendRichMessage(
             "<gray><category> / <status> / <player> / <date>",
             Placeholder.unparsed("category", categoryName),
             Placeholder.unparsed("status", TicketStatusLabel.of(ticket)),
             Placeholder.unparsed("player", ticket.playerName),
             Placeholder.unparsed("date", format(ticket.createdAt)),
         )
-        player.sendRichMessage("<white><content>", Placeholder.unparsed("content", ticket.content))
+        sender.sendRichMessage("<white><content>", Placeholder.unparsed("content", ticket.content))
 
         if (comments.isEmpty()) {
-            player.sendRichMessage("<gray>コメントはまだありません。")
+            sender.sendRichMessage("<gray>コメントはまだありません。")
         } else {
-            player.sendRichMessage("<gold>----- コメント -----")
+            sender.sendRichMessage("<gold>----- コメント -----")
             // チャットに収まらないほど古いコメントは Web (MineAuth) で確認してもらう
             if (hasOlder) {
-                player.sendRichMessage("<gray>(これより前のコメントは省略しています)")
+                sender.sendRichMessage("<gray>(これより前のコメントは省略しています)")
             }
-            comments.forEach { presentComment(player, it) }
+            comments.forEach { presentComment(sender, it) }
         }
         // 返信や対応をしやすいよう、操作できるコマンドのボタンを添える (id は数値なのでそのまま埋め込める)
-        player.sendRichMessage(actionButtons(player, ticket).joinToString(" "))
+        // コンソールはボタンを押せず、コメントやテレポートも行えないため、プレイヤーにだけ表示する
+        if (sender is Player) {
+            sender.sendRichMessage(actionButtons(sender, ticket).joinToString(" "))
+        }
     }
 
     /**
@@ -96,21 +100,21 @@ class TicketThreadPresenter : MoripaUtilsKoinComponent {
     /**
      * コメントを 1 件表示する
      *
-     * @param player 表示先のプレイヤー
+     * @param sender 表示先 (プレイヤーまたはコンソール)
      * @param comment 表示するコメント
      */
-    private fun presentComment(player: Player, comment: TicketComment) {
+    private fun presentComment(sender: CommandSender, comment: TicketComment) {
         // 運営の書き込みは見分けやすいよう印と色を付ける
         val header = when (comment.authorType) {
             TicketCommentAuthorType.STAFF -> "<green>[運営] <author></green> <gray><date>"
             TicketCommentAuthorType.PLAYER -> "<yellow><author></yellow> <gray><date>"
         }
-        player.sendRichMessage(
+        sender.sendRichMessage(
             header,
             Placeholder.unparsed("author", comment.authorName),
             Placeholder.unparsed("date", format(comment.createdAt)),
         )
-        player.sendRichMessage("<white><content>", Placeholder.unparsed("content", comment.content))
+        sender.sendRichMessage("<white><content>", Placeholder.unparsed("content", comment.content))
     }
 
     /**

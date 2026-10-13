@@ -9,18 +9,21 @@
 
 package party.morino.moripautils.paper.ticket
 
+import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import party.morino.moripautils.api.model.ticket.TicketActor
 
 /**
- * プレイヤーをチケットの操作者に変換する
+ * コマンドの実行元をチケットの操作者に変換する
  *
- * moripautils.ticket.staff 権限を持つプレイヤーは運営として、すべてのチケットを閲覧・コメントできる。
+ * moripautils.ticket.staff 権限を持つ実行元は運営として、すべてのチケットを閲覧・操作できる。
+ * コンソールなどプレイヤー以外は自分のチケットを持たないため、UUID を null にする
+ * (コンソールは権限をすべて持つので運営として扱われる)。
  *
  * @return 操作者
  */
-fun Player.toTicketActor(): TicketActor = TicketActor(
-    uuid = uniqueId,
+fun CommandSender.toTicketActor(): TicketActor = TicketActor(
+    uuid = (this as? Player)?.uniqueId,
     name = name,
     isStaff = hasPermission(TicketPermissions.STAFF),
 )
