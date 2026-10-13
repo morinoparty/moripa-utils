@@ -14,6 +14,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.Location
+import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.incendo.cloud.annotation.specifier.FlagYielding
 import org.incendo.cloud.annotation.specifier.Range
@@ -118,6 +119,7 @@ class TicketCommand {
      * チケットと最新のコメントをチャットに表示する
      *
      * 本人は自分のチケットを、運営 (moripautils.ticket.staff) はすべてのチケットを表示できる。
+     * コンソールからも実行でき、運営として扱う。
      *
      * @param source コマンドの実行元
      * @param id チケットの id
@@ -129,19 +131,19 @@ class TicketCommand {
         source: CommandSourceStack,
         @Argument(value = "id", suggestions = TICKET_ID_SUGGESTIONS) id: Long,
     ) {
-        val player = requirePlayer(source) ?: return
+        val sender = source.sender
         val koin = MoripaUtilsKoinContext.getOrNull()
         val plugin = koin?.getOrNull<MoripaUtils>()
         val service = koin?.getOrNull<TicketService>()
         val presenter = koin?.getOrNull<TicketThreadPresenter>()
         if (plugin == null || service == null || presenter == null) {
-            player.sendRichMessage("<red>現在お問い合わせを利用できません。")
+            sender.sendRichMessage("<red>現在お問い合わせを利用できません。")
             return
         }
         // 存在しないチケットと他人のチケットは区別せずに伝える
-        val ticket = service.findAccessibleTicket(player.toTicketActor(), id)
+        val ticket = service.findAccessibleTicket(sender.toTicketActor(), id)
         if (ticket == null) {
-            player.sendRichMessage("<red>お問い合わせが見つかりません。")
+            sender.sendRichMessage("<red>お問い合わせが見つかりません。")
             return
         }
         // 1 件多く取得して、表示しきれない古いコメントがあるかを判定する
@@ -149,7 +151,7 @@ class TicketCommand {
         val hasOlder = fetched.size > TicketThreadPresenter.MAX_COMMENTS
         val comments = fetched.takeLast(TicketThreadPresenter.MAX_COMMENTS)
         withContext(plugin.minecraftDispatcher) {
-            presenter.present(player, ticket, comments, hasOlder)
+            presenter.present(sender, ticket, comments, hasOlder)
         }
     }
 
@@ -191,6 +193,7 @@ class TicketCommand {
      * 閲覧できるチケットを新しい順に一覧表示する
      *
      * 本人は自分のチケットを、運営 (moripautils.ticket.staff) はすべてのチケットを表示できる。
+     * コンソールからも実行でき、運営として扱う。
      *
      * @param source コマンドの実行元
      * @param page 表示するページ番号 (1 始まり、省略時は 1)
@@ -207,23 +210,23 @@ class TicketCommand {
         @Flag(value = "player", suggestions = ONLINE_PLAYER_SUGGESTIONS, permission = TicketPermissions.STAFF)
         playerName: String?,
     ) {
-        val player = requirePlayer(source) ?: return
+        val sender = source.sender
         val koin = MoripaUtilsKoinContext.getOrNull()
         val plugin = koin?.getOrNull<MoripaUtils>()
         val service = koin?.getOrNull<TicketService>()
         val presenter = koin?.getOrNull<TicketListPresenter>()
         if (plugin == null || service == null || presenter == null) {
-            player.sendRichMessage("<red>現在お問い合わせを利用できません。")
+            sender.sendRichMessage("<red>現在お問い合わせを利用できません。")
             return
         }
         val filter = TicketListFilter(status = status, playerName = playerName)
         val pageSize = TicketListPresenter.PAGE_SIZE
         val offset = (page - 1).toLong() * pageSize
         // 1 件多く取得して、次のページがあるかを判定する
-        val fetched = service.listAccessibleTickets(player.toTicketActor(), filter, offset, pageSize + 1)
+        val fetched = service.listAccessibleTickets(sender.toTicketActor(), filter, offset, pageSize + 1)
         val hasNext = fetched.size > pageSize
         withContext(plugin.minecraftDispatcher) {
-            presenter.present(player, fetched.take(pageSize), page, hasNext, filter)
+            presenter.present(sender, fetched.take(pageSize), page, hasNext, filter)
         }
     }
 
@@ -231,6 +234,7 @@ class TicketCommand {
      * チケットをクローズする
      *
      * 本人は自分のチケットを、運営 (moripautils.ticket.staff) はすべてのチケットをクローズできる。
+     * コンソールからも実行でき、運営として扱う。
      *
      * @param source コマンドの実行元
      * @param id チケットの id
@@ -246,26 +250,28 @@ class TicketCommand {
         @Flag(value = "reason-type", suggestions = CLOSE_REASON_SUGGESTIONS) reasonType: String?,
         @Flag(value = "comment") @FlagYielding comment: String?,
     ) {
-        val player = requirePlayer(source) ?: return
+        val sender = source.sender
         val service = MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketService>()
         if (service == null) {
-            player.sendRichMessage("<red>現在お問い合わせを利用できません。")
+            sender.sendRichMessage("<red>現在お問い合わせを利用できません。")
             return
         }
         // 補完候補以外の値が入力された場合は、使える値を案内する
         val reason = if (reasonType == null) TicketCloseReason.DEFAULT else TicketCloseReason.fromId(reasonType)
         if (reason == null) {
-            player.sendRichMessage(
+            sender.sendRichMessage(
                 "<red>理由には <reasons> のいずれかを指定してください。",
                 Placeholder.unparsed("reasons", TicketCloseReason.entries.joinToString(" / ") { it.id }),
             )
             return
         }
-        sendStatusChangeResult(player, id, service.closeTicket(player.toTicketActor(), id, reason, comment))
+        sendStatusChangeResult(sender, id, service.closeTicket(sender.toTicketActor(), id, reason, comment))
     }
 
     /**
      * クローズされたチケットをオープンに戻す (運営のみ)
+     *
+     * コンソールからも実行できる。
      *
      * @param source コマンドの実行元
      * @param id チケットの id
@@ -277,13 +283,13 @@ class TicketCommand {
         source: CommandSourceStack,
         @Argument(value = "id", suggestions = CLOSED_TICKET_ID_SUGGESTIONS) id: Long,
     ) {
-        val player = requirePlayer(source) ?: return
+        val sender = source.sender
         val service = MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketService>()
         if (service == null) {
-            player.sendRichMessage("<red>現在お問い合わせを利用できません。")
+            sender.sendRichMessage("<red>現在お問い合わせを利用できません。")
             return
         }
-        sendStatusChangeResult(player, id, service.reopenTicket(player.toTicketActor(), id))
+        sendStatusChangeResult(sender, id, service.reopenTicket(sender.toTicketActor(), id))
     }
 
     /**
@@ -419,38 +425,38 @@ class TicketCommand {
         context: CommandContext<CommandSourceStack>,
         filter: TicketListFilter,
     ): List<String> {
-        // コンソールなどプレイヤー以外は自分のチケットを持たない
-        val player = context.sender().sender as? Player ?: return emptyList()
+        // コンソールは運営として、すべてのチケットを候補にする
+        val sender = context.sender().sender
         // 無効化中などでサービスが無い場合は候補を出さない
         val service = MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketService>() ?: return emptyList()
         return service
-            .listAccessibleTickets(player.toTicketActor(), filter, 0, MAX_SUGGESTIONS)
+            .listAccessibleTickets(sender.toTicketActor(), filter, 0, MAX_SUGGESTIONS)
             .map { it.id.toString() }
     }
 
     /**
-     * クローズ / 再オープンの結果をプレイヤーに伝える
+     * クローズ / 再オープンの結果を実行元に伝える
      *
-     * @param player 実行したプレイヤー
+     * @param sender 実行元 (プレイヤーまたはコンソール)
      * @param id 指定されたチケットの id
      * @param result 変更結果
      */
-    private fun sendStatusChangeResult(player: Player, id: Long, result: TicketStatusChangeResult) {
+    private fun sendStatusChangeResult(sender: CommandSender, id: Long, result: TicketStatusChangeResult) {
         val idPlaceholder = Placeholder.unparsed("id", id.toString())
         when (result) {
-            is TicketStatusChangeResult.Success -> player.sendRichMessage(
+            is TicketStatusChangeResult.Success -> sender.sendRichMessage(
                 "<green>お問い合わせ #<id> を「<status>」にしました。",
                 idPlaceholder,
                 Placeholder.unparsed("status", TicketStatusLabel.of(result.change.ticket)),
             )
-            TicketStatusChangeResult.TicketNotFound -> player.sendRichMessage("<red>お問い合わせが見つかりません。")
-            TicketStatusChangeResult.NotPermitted -> player.sendRichMessage("<red>この操作を行う権限がありません。")
+            TicketStatusChangeResult.TicketNotFound -> sender.sendRichMessage("<red>お問い合わせが見つかりません。")
+            TicketStatusChangeResult.NotPermitted -> sender.sendRichMessage("<red>この操作を行う権限がありません。")
             TicketStatusChangeResult.AlreadyClosed ->
-                player.sendRichMessage("<yellow>お問い合わせ #<id> は既にクローズされています。", idPlaceholder)
+                sender.sendRichMessage("<yellow>お問い合わせ #<id> は既にクローズされています。", idPlaceholder)
             TicketStatusChangeResult.AlreadyOpen ->
-                player.sendRichMessage("<yellow>お問い合わせ #<id> は既にオープンしています。", idPlaceholder)
-            TicketStatusChangeResult.BlankComment -> player.sendRichMessage("<red>コメントを入力してください。")
-            is TicketStatusChangeResult.CommentTooLong -> player.sendRichMessage(
+                sender.sendRichMessage("<yellow>お問い合わせ #<id> は既にオープンしています。", idPlaceholder)
+            TicketStatusChangeResult.BlankComment -> sender.sendRichMessage("<red>コメントを入力してください。")
+            is TicketStatusChangeResult.CommentTooLong -> sender.sendRichMessage(
                 "<red>コメントは <max> 文字以内で入力してください。",
                 Placeholder.unparsed("max", result.maxLength.toString()),
             )
