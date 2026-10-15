@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "index": "https://kerria.plugin.morino.party/mpm/velocity/index.json",
+    "allowedSources": [
+      "github:morinoparty/Kerria"
+    ]
+  }
+]

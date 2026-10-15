@@ -4,5 +4,11 @@
   },
   {
     "index": "https://fishing.plugin.morino.party/mpm/paper/index.json"
+  },
+  {
+    "index": "https://kerria.plugin.morino.party/mpm/paper/index.json",
+    "allowedSources": [
+      "github:morinoparty/Kerria"
+    ]
   }
 ]

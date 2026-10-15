@@ -6,7 +6,7 @@ description: このサイトが配信する morinoparty の mpm リポジトリ�
 # mpm リポジトリ
 
 このサイト (`utils.plugin.morino.party`) は、Minecraft プラグインマネージャー [mpm](https://mpm.plugin.morino.party) のリモートリポジトリとして、morinoparty のプラグインの定義を配信します。
-morinoparty が開発しているプラグインの定義に加えて、MineAuth や MoripaFishing などの個別プラグインが配信する子リポジトリへのリンクを持ちます。
+morinoparty が開発しているプラグインの定義に加えて、MineAuth・MoripaFishing・Kerria などの個別プラグインが配信する子リポジトリへのリンクを持ちます。
 
 このリポジトリは mpm の中央リポジトリ (`repo.mpm.nikomaru.dev`) からは参照されていません。
 mpm 自身の定義は中央リポジトリが持っているため、このリポジトリには含まれません。
@@ -37,16 +37,18 @@ mpm 自身の定義は中央リポジトリが持っているため、このリ�
 
 mpm のクライアントは、このサイトの `index.json` を起点に、`children` に書かれたリンクを再帰的にたどってカタログを組み立てます。
 Paper 側のインデックスの位置付けは次の図のとおりです。
-Velocity 側のインデックスは、現在のところ子リポジトリを持ちません。
+Velocity 側のインデックスは、Kerria の子リポジトリ（`kerria.plugin.morino.party/mpm/velocity/index.json`）のみを持ちます。
 
 ```mermaid
 graph TD
     morinoparty["morinoparty (このサイト)<br/>utils.plugin.morino.party/mpm/paper/index.json"]
     mineauth["MineAuth<br/>mineauth.plugin.morino.party/mpm/paper/index.json"]
     fishing["MoripaFishing<br/>fishing.plugin.morino.party/mpm/paper/index.json"]
+    kerria["Kerria<br/>kerria.plugin.morino.party/mpm/paper/index.json"]
 
     morinoparty -->|children| mineauth
     morinoparty -->|children| fishing
+    morinoparty -->|children| kerria
 ```
 
 同じ名前のプラグインが複数のノードに定義されている場合は、祖先側 (起点に近い側) の定義が優先されます。
