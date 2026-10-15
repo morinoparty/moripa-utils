@@ -1,16 +1,17 @@
 /**
  * mpm のリポジトリインデックス（index.json）を生成する。
  *
- * `docs/mpm/plugins/*.json`（真実の源・コミット対象）と `docs/mpm/children.json`（子リポジトリへのリンク）を
- * 1枚のバンドルに束ね、`docs/public/mpm/paper/index.json`（生成物・gitignore）として書き出す。
+ * プラットフォーム（paper / velocity）ごとに、`docs/mpm/<platform>/plugins/*.json`（真実の源・コミット対象）と
+ * `docs/mpm/<platform>/children.json`（子リポジトリへのリンク）を1枚のバンドルに束ね、
+ * `docs/public/mpm/<platform>/index.json`（生成物・gitignore）として書き出す。
  *
  * このサイト（utils.plugin.morino.party）は mpm リポジトリグラフにおける morinoparty のノードである。
  * 中央リポジトリ（repo.mpm.nikomaru.dev）からは参照されておらず、利用者が config.json にリモートソースとして追加する。
  * mpm（クライアント）はここを起点に children をたどって MineAuth や MoripaFishing などの子リポジトリを読む。
  * mpm 自身の定義は中央リポジトリが持つため、ここには置かない。
  *
- * morinoparty のプラグインを追加するときは docs/mpm/plugins/ に JSON を1つ足すだけでよい。
- * 子リポジトリを追加するときは docs/mpm/children.json にリンクを1件足す。
+ * morinoparty のプラグインを追加するときは docs/mpm/<platform>/plugins/ に JSON を1つ足すだけでよい。
+ * 子リポジトリを追加するときは docs/mpm/<platform>/children.json にリンクを1件足す。
  *
  * 定義は中央リポジトリの repo/public/paper/plugins/ と同じ形式のため、
  * 変換は中央の repo/scripts/build.ts と同じく `$schema` を落とすだけに留める
@@ -24,9 +25,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const docsDir = join(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceDir = join(docsDir, "mpm", "plugins");
-const childrenFile = join(docsDir, "mpm", "children.json");
-const outputFile = join(docsDir, "public", "mpm", "paper", "index.json");
+
+// インデックスを生成するプラットフォーム。それぞれ docs/mpm/<platform>/ を読み、public/mpm/<platform>/index.json に書き出す
+const PLATFORMS = ["paper", "velocity"];
 
 // 中央リポジトリの build.ts が配信している repository-index スキーマのURL
 const REPOSITORY_INDEX_SCHEMA = "https://repo.mpm.nikomaru.dev/schema/repository-index/v1.json";
@@ -43,19 +44,21 @@ const ALLOWED_SOURCE_PATTERN = /^[a-z]+:[^\s]+$/;
 const errors = [];
 
 /**
- * docs/mpm/plugins/*.json を読み込み、検証してプラグイン名 -> 定義のマップにする。
+ * docs/mpm/<platform>/plugins/*.json を読み込み、検証してプラグイン名 -> 定義のマップにする。
  * 公開バンドルには `$schema` を含めない（手元のIDE補完用でクライアントには不要）。
  */
-const loadPlugins = () => {
+const loadPlugins = (platform) => {
+    const sourceDir = join(docsDir, "mpm", platform, "plugins");
     const files = readdirSync(sourceDir)
         .filter((file) => file.endsWith(".json"))
         .sort();
 
     const plugins = {};
-    for (const file of files) {
-        const name = file.replace(/\.json$/, "");
-        const definition = JSON.parse(readFileSync(join(sourceDir, file), "utf-8"));
+    for (const fileName of files) {
+        const name = fileName.replace(/\.json$/, "");
+        const definition = JSON.parse(readFileSync(join(sourceDir, fileName), "utf-8"));
 
+        const file = `${platform}/${fileName}`;
         // ファイル名と id の不一致はクライアント側で破棄されるため、ここで落とす
         if (definition.id !== name) {
             errors.push(`${file}: id (${definition.id}) がファイル名と一致しません`);
@@ -85,14 +88,15 @@ const loadPlugins = () => {
 };
 
 /**
- * docs/mpm/children.json（子リポジトリへのリンク一覧）を読み込んで検証する。
+ * docs/mpm/<platform>/children.json（子リポジトリへのリンク一覧）を読み込んで検証する。
  * ファイルが無ければ子なしとして扱う。
  */
-const loadChildren = () => {
+const loadChildren = (platform) => {
+    const childrenFile = join(docsDir, "mpm", platform, "children.json");
     if (!existsSync(childrenFile)) return [];
     const children = JSON.parse(readFileSync(childrenFile, "utf-8"));
     if (!Array.isArray(children)) {
-        errors.push("children.json: 配列である必要があります");
+        errors.push(`${platform}/children.json: 配列である必要があります`);
         return [];
     }
 
@@ -100,11 +104,11 @@ const loadChildren = () => {
     const seen = new Set();
     for (const link of children) {
         if (typeof link?.index !== "string" || !CHILD_INDEX_PATTERN.test(link.index)) {
-            errors.push(`children.json: index は https で始まり .json で終わるURLである必要があります (${link?.index})`);
+            errors.push(`${platform}/children.json: index は https で始まり .json で終わるURLである必要があります (${link?.index})`);
             continue;
         }
         if (seen.has(link.index)) {
-            errors.push(`children.json: 重複したリンクがあります (${link.index})`);
+            errors.push(`${platform}/children.json: 重複したリンクがあります (${link.index})`);
         }
         seen.add(link.index);
         // allowedSources は任意。指定した場合だけ形式を検証する
@@ -115,15 +119,19 @@ const loadChildren = () => {
                     (source) => typeof source === "string" && ALLOWED_SOURCE_PATTERN.test(source),
                 );
             if (!valid) {
-                errors.push(`children.json: allowedSources は "type:id" 形式の文字列配列である必要があります (${link.index})`);
+                errors.push(`${platform}/children.json: allowedSources は "type:id" 形式の文字列配列である必要があります (${link.index})`);
             }
         }
     }
     return children;
 };
 
-const plugins = loadPlugins();
-const children = loadChildren();
+// 全プラットフォームを先に読み込み、1つでもエラーがあれば何も書き出さずに終了する
+const indexes = PLATFORMS.map((platform) => ({
+    platform,
+    plugins: loadPlugins(platform),
+    children: loadChildren(platform),
+}));
 
 if (errors.length > 0) {
     for (const error of errors) {
@@ -132,18 +140,22 @@ if (errors.length > 0) {
     process.exit(1);
 }
 
-const index = {
-    $schema: REPOSITORY_INDEX_SCHEMA,
-    schemaVersion: 1,
-    name: "morinoparty",
-    generated: new Date().toISOString(),
-    plugins,
-    children,
-};
+const generated = new Date().toISOString();
+for (const { platform, plugins, children } of indexes) {
+    const index = {
+        $schema: REPOSITORY_INDEX_SCHEMA,
+        schemaVersion: 1,
+        name: "morinoparty",
+        generated,
+        plugins,
+        children,
+    };
 
-mkdirSync(dirname(outputFile), { recursive: true });
-writeFileSync(outputFile, `${JSON.stringify(index, null, 2)}\n`);
+    const outputFile = join(docsDir, "public", "mpm", platform, "index.json");
+    mkdirSync(dirname(outputFile), { recursive: true });
+    writeFileSync(outputFile, `${JSON.stringify(index, null, 2)}\n`);
 
-console.log(
-    `✓ Generated mpm index with ${Object.keys(plugins).length} plugins and ${children.length} children`,
-);
+    console.log(
+        `✓ Generated mpm ${platform} index with ${Object.keys(plugins).length} plugins and ${children.length} children`,
+    );
+}

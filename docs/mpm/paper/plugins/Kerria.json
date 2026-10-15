@@ -1,0 +1,13 @@
+{
+  "$schema": "https://repo.mpm.nikomaru.dev/schema/plugin-info/v1.json",
+  "id": "Kerria",
+  "website": "https://kerria.plugin.morino.party",
+  "source": "https://github.com/morinoparty/Kerria",
+  "repositories": [
+    {
+      "type": "github",
+      "id": "morinoparty/Kerria",
+      "fileNameRegex": "Kerria-paper-.*\\.jar$"
+    }
+  ]
+}

@@ -14,11 +14,19 @@ mpm 自身の定義は中央リポジトリが持っているため、このリ�
 ## リポジトリの追加
 
 このリポジトリを利用する場合は、mpm の `config.json` にリモートソースとして追加します。
+インデックスはサーバーソフトウェアごとに分かれているため、Paper サーバーでは `paper`、Velocity プロキシでは `velocity` のインデックスを指定します。
 
-```json
+```json title="Paper サーバーの config.json"
 {
     "type": "remote",
     "url": "https://utils.plugin.morino.party/mpm/paper/index.json"
+}
+```
+
+```json title="Velocity プロキシの config.json"
+{
+    "type": "remote",
+    "url": "https://utils.plugin.morino.party/mpm/velocity/index.json"
 }
 ```
 
@@ -28,7 +36,8 @@ mpm 自身の定義は中央リポジトリが持っているため、このリ�
 ## リポジトリグラフ
 
 mpm のクライアントは、このサイトの `index.json` を起点に、`children` に書かれたリンクを再帰的にたどってカタログを組み立てます。
-このサイトの位置付けは次の図のとおりです。
+Paper 側のインデックスの位置付けは次の図のとおりです。
+Velocity 側のインデックスは、現在のところ子リポジトリを持ちません。
 
 ```mermaid
 graph TD
@@ -48,17 +57,19 @@ graph TD
 
 | URL | 内容 |
 |-----|------|
-| `https://utils.plugin.morino.party/mpm/paper/index.json` | morinoparty のプラグイン定義と子リポジトリへのリンクをまとめたインデックス |
+| `https://utils.plugin.morino.party/mpm/paper/index.json` | Paper 向けのプラグイン定義と子リポジトリへのリンクをまとめたインデックス |
+| `https://utils.plugin.morino.party/mpm/velocity/index.json` | Velocity 向けのプラグイン定義をまとめたインデックス |
 
-`index.json` はドキュメントサイトのビルド時に `docs/scripts/build-mpm-index.mjs` によって生成されます。
+各 `index.json` はドキュメントサイトのビルド時に `docs/scripts/build-mpm-index.mjs` によって生成されます。
 生成元となるファイルは次のとおりです。
 
 | ファイル | 内容 |
 |---------|------|
-| `docs/mpm/plugins/*.json` | プラグインごとの定義 (1 プラグインにつき 1 ファイル) |
-| `docs/mpm/children.json` | 子リポジトリへのリンクの一覧 |
+| `docs/mpm/<platform>/plugins/*.json` | プラグインごとの定義 (1 プラグインにつき 1 ファイル) |
+| `docs/mpm/<platform>/children.json` | 子リポジトリへのリンクの一覧 |
 
-生成された `docs/public/mpm/paper/index.json` はビルド成果物であるため、Git の管理対象には含まれません。
+`<platform>` には `paper` または `velocity` が入ります。
+生成された `docs/public/mpm/<platform>/index.json` はビルド成果物であるため、Git の管理対象には含まれません。
 `docs/` 以下の変更が `main` ブランチにマージされると、ドキュメントのデプロイワークフローによってサイトと一緒に `index.json` が再生成され、公開されます。
 
 手元で生成結果を確認する場合は、次のコマンドを実行します。
