@@ -1,0 +1,14 @@
+{
+  "$schema": "https://repo.mpm.nikomaru.dev/schema/plugin-info/v1.json",
+  "id": "MoripaUtils",
+  "license": "CC0-1.0",
+  "website": "https://utils.plugin.morino.party",
+  "source": "https://github.com/morinoparty/moripa-utils",
+  "repositories": [
+    {
+      "type": "github",
+      "id": "morinoparty/moripa-utils",
+      "fileNameRegex": "MoripaUtils-velocity-.*\\.jar$"
+    }
+  ]
+}
