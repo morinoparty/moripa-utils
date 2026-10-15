@@ -18,7 +18,6 @@ import party.morino.moripautils.common.model.config.TicketCategory
 import party.morino.moripautils.common.model.config.TicketConfig
 import party.morino.moripautils.api.model.ticket.Ticket
 import party.morino.moripautils.api.model.ticket.TicketComment
-import party.morino.moripautils.api.model.ticket.TicketCommentAuthorType
 import party.morino.moripautils.api.model.ticket.TicketStatusChange
 import party.morino.moripautils.common.ticket.TicketNotifier
 import java.net.URI
@@ -30,10 +29,9 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 /**
- * 新しいチケット、プレイヤーからのコメント、状態の変更 (クローズ / 再オープン) を Discord Webhook へ送る通知先
+ * 新しいチケット、コメント、状態の変更 (クローズ / 再オープン) を Discord Webhook へ送る通知先
  *
  * config.conf の ticket.webhook.url が空の場合は何もしない。
- * 運営のコメントは運営自身が書いたものなので送らない。
  * 送信に失敗してもチケットの送信自体は成功させたいため、例外は呼び出し元へ投げずにログへ残す。
  *
  * @param logger 送信の失敗を記録するロガー
@@ -57,10 +55,7 @@ class TicketWebhookNotifier(
     }
 
     override suspend fun notifyComment(ticket: Ticket, comment: TicketComment) {
-        // 運営の返信は運営チャンネルに流す必要がないため、プレイヤーからのコメントだけを送る
-        if (comment.authorType != TicketCommentAuthorType.PLAYER) {
-            return
-        }
+        // 運営チャンネルでやり取りの経緯を追えるよう、本人と運営のどちらのコメントも送る
         send(
             DiscordWebhookPayload.createComment(ticket, comment, categoryNameOf(ticket), config.webhook),
             "comment #${comment.id} on ticket #${ticket.id}",
