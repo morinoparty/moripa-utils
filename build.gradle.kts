@@ -47,6 +47,8 @@ allprojects {
         maven("https://repo.codemc.io/repository/maven-public/")
         // WorldEdit の API
         maven("https://maven.enginehub.org/repo/")
+        // HuskSync の API
+        maven("https://repo.william278.net/releases/")
     }
 
     dependencies {
