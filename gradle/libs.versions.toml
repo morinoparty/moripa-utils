@@ -24,6 +24,10 @@ mineauth = "0.5.1"
 awsSdk = "2.55.3"
 # schematic の読み書きに使う WorldEdit の API (FAWE も同じ API を実装している)。実行時は WorldEdit / FAWE プラグイン側のクラスを使う
 worldedit = "7.4.5"
+# 進捗の復元に使う HuskSync の API (プラットフォーム非依存の common)。実行時は HuskSync プラグイン側のクラスを使う
+husksync = "4.1.0"
+# HuskSync の RedisManager が継承する Redis クライアント (コンパイル時に型を解決するためだけに使う)
+lettuce = "7.9.0.RELEASE"
 
 [libraries]
 paper-api = { group = "io.papermc.paper", name = "paper-api", version.ref = "paper" }
@@ -71,6 +75,10 @@ aws-url-connection-client = { group = "software.amazon.awssdk", name = "url-conn
 # WorldEdit の API (プレイヤーのクリップボードを schematic として書き出す)
 worldedit-core = { group = "com.sk89q.worldedit", name = "worldedit-core", version.ref = "worldedit" }
 worldedit-bukkit = { group = "com.sk89q.worldedit", name = "worldedit-bukkit", version.ref = "worldedit" }
+
+# HuskSync の API (スナップショットの一覧と、現在のデータの書き換えに使う)
+husksync-common = { group = "net.william278.husksync", name = "husksync-common", version.ref = "husksync" }
+lettuce-core = { group = "io.lettuce", name = "lettuce-core", version.ref = "lettuce" }
 
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mock-bukkit = { group = "org.mockbukkit.mockbukkit", name = "mockbukkit-v26.2", version.ref = "mockBukkit" }

@@ -38,6 +38,10 @@ dependencies {
     compileOnly(libs.mineauth.api)
     // WorldEdit の API。実行時は WorldEdit / FAWE プラグインのクラスを joinClasspath で参照するため同梱しない
     compileOnly(libs.bundles.worldedit) { isTransitive = false }
+    // HuskSync の API。実行時は HuskSync プラグインのクラスを joinClasspath で参照するため同梱しない
+    compileOnly(libs.husksync.common)
+    // HuskSync の RedisManager の親の型を解決するためだけに使う (実行時は HuskSync 側のクラスを使う)
+    compileOnly(libs.lettuce.core) { isTransitive = false }
     // S3 互換ストレージのクライアント。JAR に同梱せず、MoripaUtilsLoader が実行時に解決する
     compileOnly(libs.bundles.storage)
     implementation(libs.bundles.coroutines.bukkit)
@@ -110,6 +114,8 @@ sourceSets.main {
                 // (FAWE は FastAsyncWorldEdit という名前で動作するため、両方を宣言しておく)
                 server("WorldEdit", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
                 server("FastAsyncWorldEdit", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
+                // HuskSync は任意依存。スナップショットから進捗だけを復元するために API のクラスを参照する
+                server("HuskSync", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
             }
             permissions {
                 // /mu reload で config.conf を再読み込みする権限
@@ -130,6 +136,11 @@ sourceSets.main {
                 // /mu worldtree で世界樹の季節を切り替える権限
                 register("moripautils.worldtree.manage") {
                     description = "Allows switching the world tree season with /mu worldtree"
+                    default = Permission.Default.OP
+                }
+                // /mu advancement restore で HuskSync のスナップショットから進捗だけを復元する権限
+                register("moripautils.advancement.restore") {
+                    description = "Allows restoring only advancements from a HuskSync snapshot with /mu advancement restore"
                     default = Permission.Default.OP
                 }
                 // チケットの閲覧や対応、新しいチケットなどの通知の受け取りを行うスタッフ向けの権限
