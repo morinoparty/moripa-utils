@@ -25,6 +25,7 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import party.morino.moripautils.paper.reload.command.ReloadCommand
 import party.morino.moripautils.paper.schematic.command.SchematicCommand
 import party.morino.moripautils.paper.ticket.command.TicketCommand
+import party.morino.moripautils.paper.worldtree.command.WorldTreeCommand
 
 /**
  * コマンドクラスを Cloud のアノテーションパーサーに通せることを検証する
@@ -43,7 +44,7 @@ class CommandRegistrationTest {
     }
 
     @Test
-    @DisplayName("Ticket, reload and schematic commands are accepted by the annotation parser")
+    @DisplayName("Ticket, reload, schematic and world tree commands are accepted by the annotation parser")
     fun commandsCanBeParsed() {
         // 本番の登録処理 (TicketCommandRegistrar / ReloadCommandRegistrar) と同じ設定でパースする
         val parser = AnnotationParser(TestCommandManager(), CommandSourceStack::class.java).installCoroutineSupport()
@@ -51,6 +52,7 @@ class CommandRegistrationTest {
         assertDoesNotThrow { parser.parse(TicketCommand()) }
         assertDoesNotThrow { parser.parse(ReloadCommand()) }
         assertDoesNotThrow { parser.parse(SchematicCommand()) }
+        assertDoesNotThrow { parser.parse(WorldTreeCommand()) }
     }
 
     @Test

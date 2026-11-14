@@ -8,6 +8,7 @@ morinoparty のサーバー運営に必要な機能を、機能 (feature) 単位
 
 - **observability** - Minecraft サーバー (Paper) およびプロキシ (Velocity) の稼働状況を Prometheus 形式で公開し、Grafana で可視化するための exporter
 - **ticket** - `/ticket` コマンドからプレイヤーが運営への問い合わせ (チケット) を送信できる UI (MineAuth 導入時は HTTP API から自分のチケットを参照可能)
+- **worldTree** - ロビーの世界樹の葉を、サーバーの起動時に月に応じた季節のブロックへ WorldEdit で置き換える (必ず中間ブロックを経由し、ブロック数の安全確認を行う。`/mu worldtree` で手動切り替えも可能)
 
 また、docs サイトでは morinoparty の mpm リポジトリインデックスもホストしています。
 

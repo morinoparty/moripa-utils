@@ -123,12 +123,137 @@ ticket {
         username="Moripa Utils"
     }
 }
+worldTree {
+    enabled=false
+    expectedBlockCount=19984
+    intermediateBlocks=[
+        obsidian,
+        "red_wool",
+        "crafting_table",
+        "quartz_block"
+    ]
+    pos1 {
+        x=43
+        y=102
+        z=54
+    }
+    pos2 {
+        x=-79
+        y=183
+        z=-77
+    }
+    seasons=[
+        {
+            months=[
+                3,
+                4
+            ]
+            name=spring
+            palette=[
+                {
+                    block="cherry_leaves[persistent=true]"
+                    weight=60
+                },
+                {
+                    block="flowering_azalea_leaves[persistent=true]"
+                    weight=15
+                },
+                {
+                    block="white_stained_glass"
+                    weight=15
+                },
+                {
+                    block="pink_wool"
+                    weight=10
+                }
+            ]
+        },
+        {
+            months=[
+                5,
+                6,
+                7,
+                8,
+                9
+            ]
+            name=summer
+            palette=[
+                {
+                    block="oak_leaves[persistent=true]"
+                    weight=35
+                },
+                {
+                    block="birch_leaves[persistent=true]"
+                    weight=25
+                },
+                {
+                    block="azalea_leaves[persistent=true]"
+                    weight=25
+                },
+                {
+                    block="green_wool"
+                    weight=15
+                }
+            ]
+        },
+        {
+            months=[
+                10,
+                11
+            ]
+            name=autumn
+            palette=[
+                {
+                    block="red_poplar_leaves[persistent=true]"
+                    weight=30
+                },
+                {
+                    block="orange_poplar_leaves[persistent=true]"
+                    weight=30
+                },
+                {
+                    block="yellow_poplar_leaves[persistent=true]"
+                    weight=40
+                }
+            ]
+        },
+        {
+            months=[
+                12,
+                1,
+                2
+            ]
+            name=winter
+            palette=[
+                {
+                    block="spruce_leaves[persistent=true]"
+                    weight=40
+                },
+                {
+                    block="powder_snow"
+                    weight=25
+                },
+                {
+                    block="pale_oak_leaves[persistent=true]"
+                    weight=25
+                },
+                {
+                    block="white_stained_glass"
+                    weight=10
+                }
+            ]
+        }
+    ]
+    timeZone="Asia/Tokyo"
+    world=world
+}
 ```
 
 Velocity では、`server` のデフォルト値が `proxy`、`observability.http.port` のデフォルト値が `9226` になります。
 ストレージは Paper 専用のため、`storage` ブロックは Velocity では使用されません (値の検証は行われます)。
 `ticket` ブロックと `database` ブロックは、Velocity ではチケットの [公開 API](./ticket/api) にのみ使用されます (`database.type` が `mysql` の場合のみ)。
 同様に、お知らせは Velocity 専用のため、`announcement` ブロックは Paper では使用されません。
+世界樹は Paper 専用のため、`worldTree` ブロックは Velocity では使用されません (値の検証は行われます)。
 
 ## 共通の項目
 
@@ -252,6 +377,25 @@ ticket {
 | `announcement.permission` | `""` | お知らせを受け取るのに必要な権限です。空文字の場合は全プレイヤーが受け取ります。 |
 
 送るメッセージは `config.conf` ではなく、メッセージファイルに記述します。詳しくは [お知らせ](/docs/announcement) を参照してください。
+
+## worldTree
+
+`worldTree` ブロックでは、ロビーの世界樹の葉をサーバーの起動時に季節に合わせて置き換える機能を設定します。
+この機能は Paper でのみ動作し、WorldEdit または FAWE が必要です。
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `worldTree.enabled` | `false` | world tree 機能を有効にするかどうかです。 |
+| `worldTree.world` | `world` | 世界樹があるワールドの名前です。 |
+| `worldTree.pos1` / `worldTree.pos2` | `{ x=43, y=102, z=54 }` / `{ x=-79, y=183, z=-77 }` | 世界樹を囲む範囲の、対角にある 2 つの角の座標です。 |
+| `worldTree.timeZone` | `"Asia/Tokyo"` | 現在の月を判定するタイムゾーンです。 |
+| `worldTree.expectedBlockCount` | `19984` | 範囲内にある葉 (中間ブロックとすべての季節のブロックの合計) の数です。一致しない場合は何も変更しません。 |
+| `worldTree.intermediateBlocks` | `[obsidian, red_wool, crafting_table, quartz_block]` | 季節に依存しない中間ブロックの種類です。 |
+| `worldTree.seasons` | 4 件 (`spring` / `summer` / `autumn` / `winter`) | 季節の名前 (`name`)、月 (`months`)、置くブロックと重み (`palette`) の一覧です。 |
+
+`worldTree.seasons` では、1 月から 12 月のそれぞれをちょうど 1 つの季節に割り当てる必要があります。
+月の割り当てに漏れや重複がある場合、季節の名前や中間ブロックが重複している場合、`worldTree.timeZone` が不正な場合は、設定ファイルの読み込み時にエラーになります。
+各項目の詳しい説明と安全確認の内容は [World Tree](/docs/world-tree) を参照してください。
 
 ## 設定の検証
 

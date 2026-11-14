@@ -32,6 +32,7 @@ object CommonModule {
         single { config.observability }
         single { config.ticket }
         single { config.storage }
+        single { config.worldTree }
         // すべてのコレクターが登録する共通レジストリ
         single { PrometheusRegistry() }
         single { MetricsHttpServer() }

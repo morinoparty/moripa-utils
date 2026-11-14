@@ -22,6 +22,7 @@ import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.paper.reload.command.ReloadCommandRegistrar
 import party.morino.moripautils.paper.schematic.command.SchematicCommandRegistrar
 import party.morino.moripautils.paper.ticket.command.TicketCommandRegistrar
+import party.morino.moripautils.paper.worldtree.command.WorldTreeCommandRegistrar
 import java.io.IOException
 
 /**
@@ -54,6 +55,8 @@ class MoripaUtilsBootstrap : PluginBootstrap {
         ReloadCommandRegistrar.register(manager)
         // /mu schematic upload は WorldEdit やストレージの有無が実行時に変わりうるため、常に登録して実行時に判定する
         SchematicCommandRegistrar.register(manager)
+        // /mu worldtree は再読み込みで機能の有効 / 無効が変わりうるため、常に登録して実行時に判定する
+        WorldTreeCommandRegistrar.register(manager)
 
         val config = loadConfigOrNull(context) ?: return
         // 無効な機能のコマンドは登録しない
