@@ -17,6 +17,7 @@ import kotlinx.serialization.Serializable
  * Paper / Velocity で同じ形を使う。Velocity ではストレージを使わないため [storage] は無視され、
  * [ticket] / [database] はチケットの公開 API (MySQL を使う場合のみ) に使われる。
  * お知らせは Velocity 専用のため、Paper では [announcement] は無視される。
+ * 世界樹は Paper 専用のため、Velocity では [worldTree] は無視される。
  *
  * @property server このサーバーを識別する文字列 (例: main, lobby)。メトリクスのラベルやチケットの送信元として使う。
  *   英数字 / ハイフン / アンダースコアのみ使用できる
@@ -25,6 +26,7 @@ import kotlinx.serialization.Serializable
  * @property observability メトリクス公開 (observability 機能) の設定
  * @property ticket お問い合わせ (ticket 機能) の設定
  * @property announcement 定期的なお知らせ (announcement 機能) の設定
+ * @property worldTree ロビーの世界樹の季節の切り替え (world tree 機能) の設定
  * @throws IllegalArgumentException server が空、または使用できない文字を含む場合
  */
 @Serializable
@@ -35,6 +37,7 @@ data class MoripaUtilsConfig(
     val observability: ObservabilityConfig = ObservabilityConfig(),
     val ticket: TicketConfig = TicketConfig(),
     val announcement: AnnouncementConfig = AnnouncementConfig(),
+    val worldTree: WorldTreeConfig = WorldTreeConfig(),
 ) {
     init {
         // ラベル値やファイル名にも使うため、記号や空白を含まない識別子に限定する

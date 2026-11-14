@@ -106,7 +106,7 @@ sourceSets.main {
             dependencies {
                 // MineAuth は任意依存。先にロードし、joinClasspath で mineauth-api のクラスを参照できるようにする
                 server("MineAuth", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
-                // WorldEdit / FAWE は任意依存。クリップボードを schematic として書き出すために API のクラスを参照する
+                // WorldEdit / FAWE は任意依存。クリップボードを schematic として書き出したり、世界樹の葉を置き換えたりするために API のクラスを参照する
                 // (FAWE は FastAsyncWorldEdit という名前で動作するため、両方を宣言しておく)
                 server("WorldEdit", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
                 server("FastAsyncWorldEdit", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)
@@ -125,6 +125,11 @@ sourceSets.main {
                 // /mu schematic upload で WorldEdit のクリップボードをストレージへアップロードする権限
                 register("moripautils.schematic.upload") {
                     description = "Allows uploading the WorldEdit clipboard as a schematic with /mu schematic upload"
+                    default = Permission.Default.OP
+                }
+                // /mu worldtree で世界樹の季節を切り替える権限
+                register("moripautils.worldtree.manage") {
+                    description = "Allows switching the world tree season with /mu worldtree"
                     default = Permission.Default.OP
                 }
                 // チケットの閲覧や対応、新しいチケットなどの通知の受け取りを行うスタッフ向けの権限

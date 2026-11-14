@@ -57,7 +57,10 @@ import party.morino.moripautils.paper.observability.metrics.WorldMetricsCollecto
 import party.morino.moripautils.paper.ticket.TicketJoinListener
 import party.morino.moripautils.paper.ticket.di.PaperTicketModule
 import party.morino.moripautils.paper.ticket.mineauth.TicketMineAuthIntegration
+import party.morino.moripautils.paper.worldtree.WorldTreeService
+import party.morino.moripautils.paper.worldtree.di.PaperWorldTreeModule
 import java.io.IOException
+import java.util.logging.Level
 
 /**
  * MoripaUtils の Paper 向けプラグイン本体
@@ -67,6 +70,7 @@ import java.io.IOException
  * メインスレッドのサンプラーを起動する。
  * ticket 機能が有効な場合は、/ticket が使うサービスと参加時の案内を読み込み、MineAuth があれば HTTP API を登録する。
  * storage が設定されている場合は、schematic のアップロード (/mu schematic upload と公開 API) が使うストレージを読み込む。
+ * world tree 機能が有効な場合は、/mu worldtree が使うサービスを読み込み、サーバーの起動時だけ世界樹を現在の月の季節にする。
  * /mu reload ([reload]) では、各機能を停止してから新しい設定で Koin コンテナごと作り直す。
  *
  * @property commandManager ブートストラップ段階で生成した Cloud のコマンドマネージャー。
@@ -103,6 +107,10 @@ open class MoripaUtils(
         setupKoin(config)
         MoripaUtilsCommon.init()
         startFeatures(config)
+        // 世界樹の自動切り替えは起動時だけ行う (/mu reload では行わず、コマンドで手動で切り替えた季節を保つ)
+        if (config.worldTree.enabled) {
+            scheduleWorldTreeStartup()
+        }
         // 公開 API は呼び出し時に Koin から依存を取り出すため、再読み込みしても設定し直す必要はない
         MoripaUtilsAPI.setInstance(PaperMoripaUtilsAPI())
 
@@ -185,6 +193,40 @@ open class MoripaUtils(
             startStorage(config.storage)
         } else {
             logger.info("Storage is not configured in config.conf; schematic upload is disabled")
+        }
+        if (config.worldTree.enabled) {
+            // コマンドが再読み込み後も使えるよう、サービスは再読み込みのたびに読み込み直す
+            MoripaUtilsKoinContext.loadModules(listOf(PaperWorldTreeModule.create()))
+        } else {
+            logger.info("World tree is disabled in config.conf")
+        }
+    }
+
+    /**
+     * 世界樹を現在の月の季節にする処理を、最初のティックに予約する
+     *
+     * onEnable の時点ではワールドが読み込まれていない場合があるため、スケジューラーで最初のティックまで遅らせる。
+     * 置き換えはブロックを書き換えるためメインスレッドで行う。
+     */
+    private fun scheduleWorldTreeStartup() {
+        server.scheduler.runTask(this, Runnable { runWorldTreeStartup() })
+    }
+
+    /**
+     * 世界樹を現在の月の季節にする (失敗してもプラグインは止めない)
+     *
+     * 結果のログはサービスが出力するため、ここでは想定外の例外だけを記録する。
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private fun runWorldTreeStartup() {
+        // 予約から実行までの間に再読み込みで無効になった場合はサービスが存在しない
+        val service = MoripaUtilsKoinContext.getOrNull()?.getOrNull<WorldTreeService>() ?: return
+        try {
+            service.applyCurrentSeason()
+        } catch (e: LinkageError) {
+            logger.warning("World tree: WorldEdit integration failed at startup: $e")
+        } catch (e: Exception) {
+            logger.log(Level.WARNING, "World tree: failed to apply the season at startup", e)
         }
     }
 

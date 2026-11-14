@@ -8,6 +8,7 @@ Paper / Velocity 両対応のマルチモジュール構成になっています
 |------|------|
 | observability | プレイヤー人数やサーバーの TPS などのメトリクスを Prometheus 形式で公開し、Grafana で可視化する |
 | ticket | `/ticket` コマンドから運営への問い合わせ (チケット) を送信できる UI (MineAuth 導入時は HTTP API から自分のチケットを参照可能) |
+| world tree | ロビーの世界樹の葉を、サーバーの起動時に月に応じた季節のブロックへ WorldEdit で置き換える (`/mu worldtree` で手動切り替えも可能) |
 
 ドキュメントサイトでは morinoparty の mpm リポジトリインデックスもホストしています。
 

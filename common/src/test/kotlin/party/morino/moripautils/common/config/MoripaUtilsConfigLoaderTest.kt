@@ -21,6 +21,7 @@ import party.morino.moripautils.common.model.config.HttpServerConfig
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.common.model.config.ObservabilityConfig
 import party.morino.moripautils.common.model.config.TicketCategory
+import party.morino.moripautils.common.model.config.WorldTreeConfig
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.minutes
@@ -188,6 +189,60 @@ class MoripaUtilsConfigLoaderTest {
         val loader = loaderWith(
             """
             announcement { interval = 500 milliseconds }
+            """.trimIndent(),
+        )
+
+        assertThrows(IllegalStateException::class.java) { loader.load() }
+    }
+
+    @Test
+    @DisplayName("Loads world tree defaults and parses overrides")
+    fun parsesWorldTree() {
+        val loader = loaderWith(
+            """
+            worldTree {
+              enabled = true
+              world = lobby
+              pos1 { x = 1, y = 2, z = 3 }
+            }
+            """.trimIndent(),
+        )
+
+        val worldTree = loader.load().worldTree
+
+        // 指定したキーは反映され、省略した季節や中間ブロックは既定値になる
+        assertTrue(worldTree.enabled)
+        assertEquals("lobby", worldTree.world)
+        assertEquals(3, worldTree.pos1.z)
+        assertEquals(WorldTreeConfig.DEFAULT_POS2, worldTree.pos2)
+        assertEquals(19984, worldTree.expectedBlockCount)
+        assertEquals(listOf("spring", "summer", "autumn", "winter"), worldTree.seasons.map { it.name })
+        // 書き出した既定値を読み直しても同じ設定になる
+        val freshLoader = MoripaUtilsConfigLoader(tempDir.resolve("fresh"), MoripaUtilsConfig())
+        freshLoader.load()
+        assertEquals(WorldTreeConfig(), freshLoader.load().worldTree)
+    }
+
+    @Test
+    @DisplayName("Rejects world tree seasons that leave a month unassigned")
+    fun rejectsMissingWorldTreeMonth() {
+        val loader = loaderWith(
+            """
+            worldTree {
+              seasons = [ { name = all, months = [1, 2, 3], palette = [ { block = "oak_leaves", weight = 1 } ] } ]
+            }
+            """.trimIndent(),
+        )
+
+        assertThrows(IllegalStateException::class.java) { loader.load() }
+    }
+
+    @Test
+    @DisplayName("Rejects invalid world tree time zone")
+    fun rejectsInvalidWorldTreeTimeZone() {
+        val loader = loaderWith(
+            """
+            worldTree { timeZone = "Not/AZone" }
             """.trimIndent(),
         )
 
