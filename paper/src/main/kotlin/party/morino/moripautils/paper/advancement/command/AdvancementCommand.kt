@@ -37,9 +37,9 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * /mu advancement restore コマンド (HuskSync のスナップショットから進捗だけを復元する)
  *
- * <snapshot> には新しい順の番号 (最新が 1) かスナップショットの ID を指定する。
- * Tab 補完では番号を候補にし、tooltip に日時や進捗の数を表示する。
- * Brigadier は補完候補を文字列順に並べ直すが、整数の候補は数値順に並べるため、番号にすることで最新が先頭に来る。
+ * <snapshot> にはスナップショットの ID か、新しい順の番号 (最新が 1) を指定する。
+ * Tab 補完ではスナップショットの ID を候補にし、tooltip に新しい順の番号、日時、進捗の数を表示する。
+ * Brigadier は補完候補を文字列順に並べ直すため、候補は ID の順に並ぶ (新しい順にはならない)。
  *
  * HuskSync は任意依存のため、コマンドは常に登録し、使えるかどうかは実行時に判定する。
  */
@@ -53,7 +53,7 @@ class AdvancementCommand(
      *
      * @param source コマンドの実行元 (コンソールからも実行できる)
      * @param playerName 復元するプレイヤーの名前 (オフラインでもよい)
-     * @param snapshot 新しい順の番号 (最新が 1) またはスナップショットの ID
+     * @param snapshot スナップショットの ID または新しい順の番号 (最新が 1)
      */
     @Command("mu advancement restore <player> <snapshot>")
     @Permission(AdvancementPermissions.RESTORE)
@@ -76,7 +76,7 @@ class AdvancementCommand(
         }
         val selector = SnapshotSelector.parse(snapshot)
         if (selector == null) {
-            sender.sendRichMessage("<red>スナップショットは 1 以上の番号 (最新が 1) か、スナップショットの ID で指定してください。")
+            sender.sendRichMessage("<red>スナップショットは、スナップショットの ID か 1 以上の番号 (最新が 1) で指定してください。")
             return
         }
 
@@ -134,7 +134,7 @@ class AdvancementCommand(
     /**
      * 指定したプレイヤーのスナップショットの Tab 補完候補を返す
      *
-     * 候補は新しい順の番号 (最新が 1) で、tooltip に日時、進捗の数、保存された理由を表示する。
+     * 候補はスナップショットの ID で、tooltip に新しい順の番号、日時、進捗の数、保存された理由を表示する。
      *
      * @param context コマンドの実行コンテキスト (入力済みの <player> を使う)
      * @param input 入力途中の文字列 (絞り込みは Cloud が行うため使わない)
@@ -163,8 +163,8 @@ class AdvancementCommand(
         } ?: return emptyList()
         return listing.snapshots.map { summary ->
             TooltipSuggestion.suggestion(
-                summary.index.toString(),
-                MessageComponentSerializer.message().serialize(Component.text(formatter.describe(summary))),
+                summary.id.toString(),
+                MessageComponentSerializer.message().serialize(Component.text(formatter.tooltip(summary))),
             )
         }
     }
