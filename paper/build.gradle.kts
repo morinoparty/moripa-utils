@@ -93,7 +93,7 @@ tasks {
         }
     }
     runServer {
-        minecraftVersion("26.2")
+        minecraftVersion("26.3")
     }
 }
 
@@ -106,7 +106,7 @@ sourceSets.main {
             main = "$group.moripautils.paper.MoripaUtils"
             bootstrapper = "$group.moripautils.paper.MoripaUtilsBootstrap"
             loader = "$group.moripautils.paper.MoripaUtilsLoader"
-            apiVersion = "26.2"
+            apiVersion = "26.3"
             dependencies {
                 // MineAuth は任意依存。先にロードし、joinClasspath で mineauth-api のクラスを参照できるようにする
                 server("MineAuth", load = PaperPluginYaml.Load.BEFORE, required = false, joinClasspath = true)

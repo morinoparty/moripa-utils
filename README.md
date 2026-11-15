@@ -47,7 +47,7 @@ Paper / Velocity 両対応のマルチモジュール構成になっています
 ## 技術スタック
 
 - **Kotlin** - 言語
-- **Paper API** 26.2 - Minecraft サーバー API
+- **Paper API** 26.3 - Minecraft サーバー API
 - **Velocity API** 4.2 - Minecraft プロキシ API
 - **Cloud** - コマンドフレームワーク (Incendo)
 - **Koin** - 依存性注入

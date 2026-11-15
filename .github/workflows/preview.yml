@@ -175,7 +175,7 @@ jobs:
           retention-days: 1
 
   # in-game テスト: fukurou で実際の Paper サーバーとクライアントを動かす
-  # 対象バージョンを解決する (paper-plugin.yml の apiVersion が 26.2 のため 26.2 以降。27.x が出たら上限を指定して 26.x に絞る)
+  # 対象バージョンを解決する (paper-plugin.yml の apiVersion が 26.3 のため 26.3 以降。27.x が出たら上限を指定して 26.x に絞る)
   game-test-versions:
     needs: setup
     runs-on: ubuntu-24.04
@@ -185,7 +185,7 @@ jobs:
       - uses: morinoparty/fukurou/versions@d2834e454bd6541db83bb646465f3ef565b0675c # v2.2.1
         id: versions
         with:
-          minecraft-version: 26.2-
+          minecraft-version: 26.3-
 
   # build-gradle が作った JAR を使い、game-test/ のシナリオを実行する (Gradle のビルドをやり直さない)
   game-test:
