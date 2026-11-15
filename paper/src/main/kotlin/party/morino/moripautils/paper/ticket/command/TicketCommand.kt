@@ -11,7 +11,9 @@ package party.morino.moripautils.paper.ticket.command
 
 import com.github.shynixn.mccoroutine.bukkit.minecraftDispatcher
 import io.papermc.paper.command.brigadier.CommandSourceStack
+import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import kotlinx.coroutines.withContext
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.Location
 import org.bukkit.command.CommandSender
@@ -25,7 +27,9 @@ import org.incendo.cloud.annotations.Default
 import org.incendo.cloud.annotations.Flag
 import org.incendo.cloud.annotations.Permission
 import org.incendo.cloud.annotations.suggestion.Suggestions
+import org.incendo.cloud.brigadier.suggestion.TooltipSuggestion
 import org.incendo.cloud.context.CommandContext
+import org.incendo.cloud.suggestion.Suggestion
 import party.morino.moripautils.common.di.MoripaUtilsKoinContext
 import party.morino.moripautils.common.model.config.MoripaUtilsConfig
 import party.morino.moripautils.api.model.ticket.TicketCloseReason
@@ -40,6 +44,7 @@ import party.morino.moripautils.paper.ticket.dialog.TicketDialogFactory
 import party.morino.moripautils.paper.ticket.toTicketActor
 import party.morino.moripautils.paper.ticket.view.TicketListPresenter
 import party.morino.moripautils.paper.ticket.view.TicketStatusLabel
+import party.morino.moripautils.paper.ticket.view.TicketSummaryText
 import party.morino.moripautils.paper.ticket.view.TicketThreadPresenter
 
 /**
@@ -359,11 +364,11 @@ class TicketCommand {
      *
      * @param context コマンドの実行コンテキスト
      * @param input 入力途中の文字列 (絞り込みは Cloud が行うため使わない)
-     * @return 補完候補のチケット id
+     * @return 補完候補のチケット id (tooltip に対応状況、カテゴリー、作成日時、送信者、本文の先頭を表示する)
      */
     @Suggestions(TICKET_ID_SUGGESTIONS)
     @Suppress("UnusedParameter")
-    suspend fun suggestTicketIds(context: CommandContext<CommandSourceStack>, input: String): List<String> =
+    suspend fun suggestTicketIds(context: CommandContext<CommandSourceStack>, input: String): List<Suggestion> =
         suggestAccessibleTicketIds(context, TicketListFilter())
 
     /**
@@ -375,7 +380,7 @@ class TicketCommand {
      */
     @Suggestions(OPEN_TICKET_ID_SUGGESTIONS)
     @Suppress("UnusedParameter")
-    suspend fun suggestOpenTicketIds(context: CommandContext<CommandSourceStack>, input: String): List<String> =
+    suspend fun suggestOpenTicketIds(context: CommandContext<CommandSourceStack>, input: String): List<Suggestion> =
         suggestAccessibleTicketIds(context, TicketListFilter(status = TicketStatus.OPEN))
 
     /**
@@ -387,7 +392,7 @@ class TicketCommand {
      */
     @Suggestions(CLOSED_TICKET_ID_SUGGESTIONS)
     @Suppress("UnusedParameter")
-    suspend fun suggestClosedTicketIds(context: CommandContext<CommandSourceStack>, input: String): List<String> =
+    suspend fun suggestClosedTicketIds(context: CommandContext<CommandSourceStack>, input: String): List<Suggestion> =
         suggestAccessibleTicketIds(context, TicketListFilter(status = TicketStatus.CLOSED))
 
     /**
@@ -417,6 +422,9 @@ class TicketCommand {
     /**
      * 実行元が閲覧できるチケットの id を新しい順に返す
      *
+     * 候補の tooltip には /ticket list の 1 行と同じく、対応状況、カテゴリー、作成日時と本文の先頭に加えて送信者を表示する。
+     * id は数値のため、Brigadier は候補を数値順に並べ直す。
+     *
      * @param context コマンドの実行コンテキスト
      * @param filter 絞り込み条件
      * @return 補完候補のチケット id
@@ -424,14 +432,24 @@ class TicketCommand {
     private suspend fun suggestAccessibleTicketIds(
         context: CommandContext<CommandSourceStack>,
         filter: TicketListFilter,
-    ): List<String> {
+    ): List<Suggestion> {
         // コンソールは運営として、すべてのチケットを候補にする
         val sender = context.sender().sender
+        val koin = MoripaUtilsKoinContext.getOrNull()
         // 無効化中などでサービスが無い場合は候補を出さない
-        val service = MoripaUtilsKoinContext.getOrNull()?.getOrNull<TicketService>() ?: return emptyList()
+        val service = koin?.getOrNull<TicketService>() ?: return emptyList()
+        val ticketConfig = koin.getOrNull<MoripaUtilsConfig>()?.ticket
         return service
             .listAccessibleTickets(sender.toTicketActor(), filter, 0, MAX_SUGGESTIONS)
-            .map { it.id.toString() }
+            .map { ticket ->
+                // 設定が取れない場合はカテゴリーの id をそのまま表示する
+                val categoryName = ticketConfig?.let { TicketSummaryText.categoryName(it, ticket) } ?: ticket.categoryId
+                TooltipSuggestion.suggestion(
+                    ticket.id.toString(),
+                    MessageComponentSerializer.message()
+                        .serialize(Component.text(TicketSummaryText.tooltip(ticket, categoryName))),
+                )
+            }
     }
 
     /**

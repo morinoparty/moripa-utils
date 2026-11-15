@@ -16,8 +16,6 @@ import party.morino.moripautils.common.di.MoripaUtilsKoinComponent
 import party.morino.moripautils.common.model.config.TicketConfig
 import party.morino.moripautils.api.model.ticket.Ticket
 import party.morino.moripautils.api.model.ticket.TicketListFilter
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * 閲覧できるチケットの一覧をチャットに表示する (/ticket list)
@@ -58,20 +56,15 @@ class TicketListPresenter : MoripaUtilsKoinComponent {
      * @param ticket 表示するチケット
      */
     private fun presentTicket(sender: CommandSender, ticket: Ticket) {
-        // 設定からカテゴリーが削除されている場合は id をそのまま表示する
-        val categoryName = config.categories.firstOrNull { it.id == ticket.categoryId }?.name ?: ticket.categoryId
-        // 1 行に収まるよう、改行や連続する空白をつぶして先頭だけを表示する
-        val flattened = ticket.content.replace(WHITESPACE, " ")
-        val preview = if (flattened.length > PREVIEW_LENGTH) flattened.take(PREVIEW_LENGTH) + "…" else flattened
         // id は数値なのでクリックイベントにそのまま埋め込める
         sender.sendRichMessage(
             "<click:run_command:'/ticket view ${ticket.id}'><hover:show_text:'<gray>クリックで詳細を表示'>" +
                 "<aqua>#<id></aqua> <gray>[<status>] <category> <date></gray> <white><preview></white></hover></click>",
             Placeholder.unparsed("id", ticket.id.toString()),
             Placeholder.unparsed("status", TicketStatusLabel.of(ticket)),
-            Placeholder.unparsed("category", categoryName),
-            Placeholder.unparsed("date", DATE_FORMATTER.format(ticket.createdAt.atZone(ZoneId.systemDefault()))),
-            Placeholder.unparsed("preview", preview),
+            Placeholder.unparsed("category", TicketSummaryText.categoryName(config, ticket)),
+            Placeholder.unparsed("date", TicketSummaryText.date(ticket)),
+            Placeholder.unparsed("preview", TicketSummaryText.preview(ticket.content)),
         )
     }
 
@@ -117,16 +110,7 @@ class TicketListPresenter : MoripaUtilsKoinComponent {
         /** 1 ページに表示する件数 (チャット欄が流れすぎないようにする) */
         const val PAGE_SIZE: Int = 10
 
-        /** 本文のプレビューの最大文字数 */
-        private const val PREVIEW_LENGTH: Int = 30
-
-        /** 改行を含む連続した空白 */
-        private val WHITESPACE: Regex = Regex("\\s+")
-
         /** クリックイベントに埋め込んでも安全なプレイヤー名 (Bedrock 連携の接頭辞 . も許可する) */
         private val SAFE_PLAYER_NAME: Regex = Regex("^[A-Za-z0-9_.]+$")
-
-        /** 日時の表示形式 */
-        private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
     }
 }
