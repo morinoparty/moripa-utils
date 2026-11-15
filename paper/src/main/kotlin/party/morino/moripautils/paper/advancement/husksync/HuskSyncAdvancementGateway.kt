@@ -29,6 +29,9 @@ import kotlin.time.Duration.Companion.seconds
  * HuskSync は任意依存のため、このオブジェクトは HuskSync が有効なことを確かめてから使うこと
  * (HuskSync が無い環境で読み込むと NoClassDefFoundError になる)。
  * HuskSync の型はこのパッケージの外へ出さない。
+ *
+ * HuskSync は desertwell などのライブラリを net.william278.husksync.libraries の下へ移して同梱している。
+ * それらの型 (ThrowingConsumer など) を引数に取る API は、元のパッケージ名では解決できないため使わない。
  */
 internal object HuskSyncAdvancementGateway {
     /** 復元前のデータを保存したスナップショットの保存理由 (HuskSync の上限の 32 文字以内) */
@@ -105,12 +108,14 @@ internal object HuskSyncAdvancementGateway {
             return AdvancementRestoreResult.BackupFailed
         }
 
-        // copy() は新しい ID と現在の日時を持つ複製を作る
-        val restored = api.editPackedSnapshot(backup.copy()) { snapshot ->
-            snapshot.isPinned = false
-            snapshot.saveCause = DataSnapshot.SaveCause.BACKUP_RESTORE
-            snapshot.setAdvancements(advancements)
-        }
+        // copy() は新しい ID と現在の日時を持つ複製を作る (展開しても ID と日時は変わらない)
+        // editPackedSnapshot は使わない。引数の ThrowingConsumer (desertwell) は HuskSync の JAR では
+        // net.william278.husksync.libraries.desertwell に移されているため、呼ぶと NoClassDefFoundError になる。
+        val restoredData = api.unpackSnapshot(backup.copy())
+        restoredData.isPinned = false
+        restoredData.saveCause = DataSnapshot.SaveCause.BACKUP_RESTORE
+        restoredData.setAdvancements(advancements)
+        val restored = api.packSnapshot(restoredData)
         val redis = api.plugin.redisManager
         val saved = saveSnapshot(user, restored) { savedUser, savedSnapshot ->
             redis.getUserData(savedUser).ifPresent { redis.setUserData(savedUser, savedSnapshot) }

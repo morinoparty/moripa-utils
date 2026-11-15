@@ -29,10 +29,10 @@ class AdvancementSnapshotFormatter(private val zone: ZoneId = ZoneId.systemDefau
         summary.timestamp.atZoneSameInstant(zone).format(TIMESTAMP_FORMAT)
 
     /**
-     * Tab 補完の tooltip に表示する説明にする
+     * スナップショットの説明にする (実行時のメッセージに表示する)
      *
      * @param summary スナップショットの概要
-     * @return 日時、進捗の数、保存された理由、固定の有無を並べた文字列
+     * @return 日時、進捗の数、保存された理由、固定の有無、短い ID を並べた文字列
      */
     fun describe(summary: AdvancementSnapshotSummary): String = buildList {
         add(timestamp(summary))
@@ -42,6 +42,23 @@ class AdvancementSnapshotFormatter(private val zone: ZoneId = ZoneId.systemDefau
             add("固定")
         }
         add(summary.id.toString().take(SHORT_ID_LENGTH))
+    }.joinToString(" / ")
+
+    /**
+     * Tab 補完の tooltip に表示する説明にする
+     *
+     * 候補は ID の順に並ぶため、新しい順の番号を先頭に付ける (候補自体が ID なので短い ID は付けない)。
+     *
+     * @param summary スナップショットの概要
+     * @return 新しい順の番号、日時、進捗の数、保存された理由、固定の有無を並べた文字列
+     */
+    fun tooltip(summary: AdvancementSnapshotSummary): String = buildList {
+        add("#${summary.index} ${timestamp(summary)}")
+        add(summary.advancementCount?.let { "進捗 $it" } ?: "進捗なし")
+        add(summary.saveCause)
+        if (summary.pinned) {
+            add("固定")
+        }
     }.joinToString(" / ")
 
     companion object {
