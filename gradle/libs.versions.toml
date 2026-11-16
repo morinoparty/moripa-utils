@@ -21,7 +21,7 @@ sqlite = "3.53.4.0"
 mysql = "26.10.0"
 mineauth = "0.5.1"
 # S3 互換ストレージのクライアント。JAR に同梱せず、Paper の PluginLoader で実行時に解決する
-awsSdk = "2.55.3"
+awsSdk = "2.59.0"
 # schematic の読み書きに使う WorldEdit の API (FAWE も同じ API を実装している)。実行時は WorldEdit / FAWE プラグイン側のクラスを使う
 worldedit = "7.4.5"
 # 進捗の復元に使う HuskSync の API (プラットフォーム非依存の common)。実行時は HuskSync プラグイン側のクラスを使う
