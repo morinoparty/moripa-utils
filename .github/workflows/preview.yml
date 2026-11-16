@@ -96,7 +96,7 @@ jobs:
 
       # GitHub Attestations で署名
       - name: Attest JAR artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: './gradle-artifacts/jars/*.jar'
 
