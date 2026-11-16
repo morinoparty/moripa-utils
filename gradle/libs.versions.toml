@@ -18,7 +18,7 @@ exposed = "1.5.1"
 # テスト用。Paper では JAR に同梱せず、サーバー同梱の sqlite-jdbc (Paper 26.x では 3.49.1.0) を実行時に使う
 sqlite = "3.53.4.0"
 # Velocity で共有データベース (MySQL) に接続するための JDBC ドライバー。Paper では本体同梱のものを使う
-mysql = "26.7.0"
+mysql = "26.10.0"
 mineauth = "0.5.1"
 # S3 互換ストレージのクライアント。JAR に同梱せず、Paper の PluginLoader で実行時に解決する
 awsSdk = "2.55.3"
