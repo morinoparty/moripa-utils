@@ -19,7 +19,7 @@ exposed = "1.6.1"
 sqlite = "3.54.1.0"
 # Velocity で共有データベース (MySQL) に接続するための JDBC ドライバー。Paper では本体同梱のものを使う
 mysql = "26.10.0"
-mineauth = "0.5.1"
+mineauth = "0.7.0"
 # S3 互換ストレージのクライアント。JAR に同梱せず、Paper の PluginLoader で実行時に解決する
 awsSdk = "2.59.7"
 # schematic の読み書きに使う WorldEdit の API (FAWE も同じ API を実装している)。実行時は WorldEdit / FAWE プラグイン側のクラスを使う
