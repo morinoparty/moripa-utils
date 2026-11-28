@@ -1,0 +1,12 @@
+{
+  "$schema": "https://repo.mpm.nikomaru.dev/schema/plugin-info/v1.json",
+  "id": "BetonQuest-DailyQuest-MineAuth-integration",
+  "source": "https://github.com/morinoparty/BetonQuest-daily-MineAuth-integration",
+  "repositories": [
+    {
+      "type": "github",
+      "id": "morinoparty/BetonQuest-daily-MineAuth-integration",
+      "fileNameRegex": "BetonQuest-DailyQuest-MineAuth(-integration)?-.*\\.jar$"
+    }
+  ]
+}
